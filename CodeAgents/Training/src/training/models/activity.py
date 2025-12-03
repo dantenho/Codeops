@@ -23,6 +23,7 @@ class ActivityType(str, Enum):
     ASSESSMENT = "assessment"
     REFLECTION = "reflection"
     SYNTAX_DRILL = "syntax_drill"
+    RESEARCH = "research"
 
 
 class ActivityStatus(str, Enum):

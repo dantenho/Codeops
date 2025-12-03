@@ -39,9 +39,6 @@ training init ClaudeCode
 # Start daily training session
 training start ClaudeCode --type daily
 
-# Coordinate multi-agent training with GPU metrics
-training orchestrate --agent GrokIA --agent ClaudeCode --max-agents 4 --iterations 3
-
 # Review flashcards
 training flashcards ClaudeCode --limit 20
 
@@ -53,18 +50,6 @@ training leaderboard --top 10
 
 # Generate report
 training report ClaudeCode --period week
-
-# Export structured data for review
-training structure-report --output structure.json
-
-# Inspect real-time GPU telemetry
-training gpu
-
-# Remove duplicate training assets
-training dedupe --path SkeletalStructure --apply
-
-# Run diagnostics across metrics/logs/errors
-training diagnostics
 ```
 
 ## Architecture
@@ -96,6 +81,7 @@ CodeAgents/Training/
 - **Agents.MD Protocol**: Enforces code standards and telemetry
 - **AMES Evaluation**: Provides performance metrics and feedback
 - **Telemetry System**: Logs all training activities
+- **Threndia Branch**: `https://github.com/Eudora-IA/Threndia` serves as the market-analysis & training extension of EudoraX. Scraped/API intel is normalized through the Threndia integration service, tagged as “mutual cooperation – Eudora-X Pylorix,” and logged under `CodeAgents/EudoraX-Pylorix/`.
 
 ## Development
 
@@ -118,7 +104,6 @@ See the following documents for complete specifications:
 - `AGENT_TRAINING_SYSTEM.md`: Full system specification
 - `CLAUDE_CODE_TODO_TRAINING_SYSTEM.md`: Implementation roadmap
 - `AGENT_METRICS_EVALUATION.md`: Evaluation integration
-- `docs/TRAINING_ANALYSIS.md`: Current database hierarchy & diagnostics guide
 
 ---
 

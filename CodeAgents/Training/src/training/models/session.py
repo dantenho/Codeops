@@ -25,6 +25,7 @@ class SessionType(str, Enum):
     REMEDIAL = "remedial"
     ADVANCEMENT = "advancement"
     CUSTOM = "custom"
+    MARKET_ANALYSIS = "market_analysis"
 
 
 class SessionStatus(str, Enum):

@@ -10,9 +10,7 @@ Timestamp: 2025-12-03T10:00:00Z
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Optional, List, Any, Dict
-from datetime import datetime, timezone
-import os
+from typing import Optional
 import typer
 from rich.console import Console
 from rich.table import Table
@@ -24,38 +22,7 @@ import random
 from .services.training_manager import TrainingManager
 from .services.reflex_service import ReflexService
 from .services.memory_service import MemoryService
-from .utils.gpu_monitor import GpuMonitor
-from .utils.dedupe import find_duplicates, remove_duplicates
-
-
-def _resolve_base_path() -> Path:
-    """
-    [CREATE] Locate the training project root regardless of install context.
-
-    Returns:
-        Path: Directory containing the `config/` folder.
-    """
-    env_override = os.getenv("TRAINING_BASE_PATH")
-    if env_override:
-        candidate = Path(env_override).expanduser()
-        if (candidate / "config").exists():
-            return candidate
-
-    resolved = Path(__file__).resolve()
-    candidate_paths = [
-        resolved.parent.parent.parent,
-        resolved.parent.parent.parent.parent,
-        Path.cwd(),
-    ]
-
-    for candidate in candidate_paths:
-        if candidate and (candidate / "config").exists():
-            return candidate
-
-    raise FileNotFoundError("Unable to locate training base path with config directory.")
-
-
-BASE_PATH = _resolve_base_path()
+from .models.session import SessionType
 
 app = typer.Typer(
     name="training",
@@ -65,10 +32,9 @@ app = typer.Typer(
 console = Console()
 
 # Initialize services
-training_manager = TrainingManager(BASE_PATH)
-reflex_service = ReflexService(BASE_PATH)
+training_manager = TrainingManager(Path(__file__).parent.parent.parent)
+reflex_service = ReflexService(Path(__file__).parent.parent.parent)
 memory_service = MemoryService()
-gpu_monitor = GpuMonitor()
 
 
 @app.command()
@@ -100,9 +66,53 @@ def start(
         # TODO: Implement other session types
         console.print(f"[yellow]Session type {session_type} not yet implemented[/yellow]")
 
+
+@app.command("threndia-sync")
+def threndia_sync(
+    agent: str = typer.Argument(..., help="Agent ID configured for Threndia"),
+    dry_run: bool = typer.Option(False, "--dry-run", help="Simulate sync without logging"),
+) -> None:
+    """Sync Threndia intel packets and emit telemetry."""
+    console.print(f"[blue]🔗 Threndia sync for {agent} (dry_run={dry_run})[/blue]")
+    try:
+        summary = training_manager.threndia_service.sync_intel(agent, dry_run=dry_run)
+        console.print(
+            f"[green]Batch {summary['intel_batch_id']} with {summary['payload_count']} payload(s) from {len(summary['sources'])} source(s).[/green]"
+        )
+    except Exception as exc:
+        console.print(f"[red]Threndia sync failed: {exc}[/red]")
+
+
+@app.command("market-analysis")
+def market_analysis(
+    agent: str = typer.Argument(..., help="Agent ID"),
+) -> None:
+    """Run a Threndia-informed market analysis session."""
+    console.print(f"[blue]📊 Launching market analysis session for {agent}[/blue]")
+    try:
+        session = training_manager.start_session(agent, SessionType.MARKET_ANALYSIS)
+        metadata = training_manager.get_threndia_metadata(agent) or {}
+
+        table = Table(title=f"Market Analysis Activities ({len(session.activities)})")
+        table.add_column("Title", style="cyan")
+        table.add_column("Source", style="magenta")
+        table.add_column("XP", justify="right")
+
+        for activity in session.activities:
+            source = activity.metadata.get("source") if activity.metadata else "n/a"
+            table.add_row(activity.title, str(source), str(activity.xp_reward))
+
+        console.print(table)
+        console.print(f"[dim]Focus areas: {', '.join(session.focus_areas) or 'n/a'}[/dim]")
+
+        session.complete()
+        training_manager.threndia_service.record_market_session(session, metadata)
+        console.print("[green]✅ Market analysis session logged[/green]")
+    except Exception as exc:
+        console.print(f"[red]Market analysis session failed: {exc}[/red]")
+
 def _run_training_session(agent: str, topic: str, fatigue_level: float = 0.0) -> float:
     """Runs a single training session and returns the score."""
-    tokens_processed = 0
     if topic == "dsa":
         dsa_dirs = [
             "Level_02_Intermediate/07_data_structures",
@@ -125,7 +135,6 @@ def _run_training_session(agent: str, topic: str, fatigue_level: float = 0.0) ->
                         # console.print(f"[dim]Processing {file_path.name}...[/dim]")
                         with open(file_path, "r") as f:
                             content = f.read()
-                            tokens_processed += len(content.split())
                             memory_service.add_training_material(topic, file_path.name, content, agent_id=agent)
 
             # Simulate error based on fatigue
@@ -137,19 +146,11 @@ def _run_training_session(agent: str, topic: str, fatigue_level: float = 0.0) ->
 
             # Score calculation: 100 base - time penalty
             score = max(0, 100 - (time_taken * 10))
-            tokens_per_second = (tokens_processed / time_taken) if time_taken > 0 else 0.0
-            score_per_token = (score / tokens_processed) if tokens_processed > 0 else 0.0
-            gpu_end = gpu_monitor.capture_snapshot()
-            gpu_metrics = gpu_monitor.summarize_snapshot(gpu_end)
 
             metrics = {
                 "fatigue_level": fatigue_level,
                 "files_processed": files_processed,
-                "session_type": "solo_dsa",
-                "tokens_processed": tokens_processed,
-                "tokens_per_second": tokens_per_second,
-                "score_per_token": score_per_token,
-                **gpu_metrics,
+                "session_type": "solo_dsa"
             }
 
             memory_service.add_score(topic, score, time_taken, agent_id=agent, metrics=metrics)
@@ -160,8 +161,6 @@ def _run_training_session(agent: str, topic: str, fatigue_level: float = 0.0) ->
         except Exception as e:
             end_time = time.time()
             time_taken = end_time - start_time
-            gpu_end = gpu_monitor.capture_snapshot()
-            gpu_metrics = gpu_monitor.summarize_snapshot(gpu_end)
             memory_service.add_error(str(e), f"Error during solo training on {topic}", agent_id=agent)
             memory_service.log_daily_activity(agent, "training_error", {"topic": topic, "error": str(e)})
             console.print(f"[red]Error during training: {e}[/red]")
@@ -245,344 +244,12 @@ def recall(
 
 
 @app.command()
-def dedupe(
-    path: Path = typer.Option(Path("SkeletalStructure"), "--path", "-p", help="Directory to scan for duplicate files"),
-    apply: bool = typer.Option(False, "--apply/--dry-run", help="Remove duplicates instead of simulation"),
-    ext: List[str] = typer.Option([], "--ext", help="Optional list of file extensions to include"),
-    dedupe_memory: bool = typer.Option(True, "--dedupe-memory/--skip-memory", help="Also dedupe stored training materials"),
-) -> None:
-    """
-    Remove duplicate training assets generated by past agent runs.
-    """
-    normalized_ext = [(e if e.startswith(".") else f".{e}") for e in ext] or None
-    if not path.exists():
-        console.print(f"[red]Path not found: {path}[/red]")
-        raise typer.Exit(1)
-
-    console.print(f"[blue]Scanning {path} for duplicate files...[/blue]")
-    duplicates = find_duplicates(path, normalized_ext)
-
-    if not duplicates:
-        console.print("[green]No duplicate files detected.[/green]")
-    else:
-        table = Table(title="Duplicate Files")
-        table.add_column("Hash", style="dim")
-        table.add_column("Copies", justify="right")
-        table.add_column("Examples")
-
-        for group in duplicates[:20]:
-            sample = "\n".join(str(f) for f in group.files[:3])
-            table.add_row(group.hash[:12], str(len(group.files)), sample)
-
-        console.print(table)
-
-        if apply:
-            removed_files = remove_duplicates(duplicates)
-            console.print(f"[yellow]Removed {removed_files} duplicate files from {path}[/yellow]")
-        else:
-            console.print("[cyan]Dry run complete. Re-run with --apply to remove duplicates.[/cyan]")
-
-    if dedupe_memory:
-        removed_docs = memory_service.dedupe_training_materials()
-        if removed_docs:
-            console.print(f"[yellow]Removed {removed_docs} duplicate training documents from ChromaDB[/yellow]")
-        else:
-            console.print("[green]No duplicate training documents detected in ChromaDB.[/green]")
-
-
-@app.command()
 def progress(
     agent: str = typer.Argument(..., help="Agent ID"),
     detailed: bool = typer.Option(False, "--detailed", "-d", help="Show detailed stats"),
 ) -> None:
     """View agent progress."""
     # TODO: Implement progress display
-
-
-@app.command("gpu")
-def gpu_metrics() -> None:
-    """
-    Display structured GPU telemetry for real-time analysis.
-    """
-    payload = gpu_monitor.structured_snapshot()
-    if not payload.get("available"):
-        console.print("[yellow]GPU monitoring not available. Install pynvml and ensure a compatible GPU is present.[/yellow]")
-        return
-
-    table = Table(title="GPU Snapshot", show_lines=True)
-    table.add_column("Index", justify="right")
-    table.add_column("Name")
-    table.add_column("Utilization %", justify="right")
-    table.add_column("Memory Used (MB)", justify="right")
-    table.add_column("Memory Total (MB)", justify="right")
-
-    for device in payload.get("devices", []):
-        table.add_row(
-            str(device.get("index")),
-            device.get("name", "unknown"),
-            f"{device.get('utilization', 0.0):.2f}",
-            f"{device.get('memory_used_mb', 0.0):.2f}",
-            f"{device.get('memory_total_mb', 0.0):.2f}",
-        )
-
-    console.print(table)
-    console.print(
-        f"[cyan]Average Utilization:[/cyan] {payload.get('gpu_utilization_avg', 0.0):.2f}% | "
-        f"[cyan]Average Memory Used:[/cyan] {payload.get('gpu_memory_used_mb', 0.0):.2f} MB"
-    )
-
-
-@app.command()
-def orchestrate(
-    agents: Optional[List[str]] = typer.Option(
-        None,
-        "--agent",
-        "-a",
-        help="Agent IDs to orchestrate (repeat the flag for multiple agents)",
-        show_default=False,
-    ),
-    topic: str = typer.Option("dsa", "--topic", "-t", help="Training topic to run"),
-    iterations: int = typer.Option(1, "--iterations", "-i", min=1, help="Number of rounds to execute"),
-    max_agents: int = typer.Option(4, "--max-agents", min=1, help="Maximum agents to coordinate at once"),
-    fatigue_increment: float = typer.Option(
-        0.1,
-        "--fatigue-increment",
-        help="Incremental fatigue applied per iteration (capped internally to 1.0)",
-    ),
-    show_errors: bool = typer.Option(
-        True,
-        "--show-errors/--hide-errors",
-        help="Toggle inclusion of recent error data in the analysis",
-    ),
-) -> None:
-    """
-    Coordinate multi-agent training runs and analyze Chroma memory outputs.
-
-    This command sequentially executes solo sessions for up to `max_agents`
-    agents, then aggregates score/time metrics plus recent errors from
-    MemoryService to provide an orchestration dashboard.
-    """
-    available_agents = training_manager.config_service.list_agents()
-    if not available_agents:
-        console.print("[red]No agent profiles found in configuration.[/red]")
-        raise typer.Exit(1)
-
-    selected_agents = list(dict.fromkeys(agents)) if agents else available_agents
-    missing_agents = [agent for agent in selected_agents if agent not in available_agents]
-    if missing_agents:
-        console.print(f"[yellow]Skipping unknown agents: {', '.join(missing_agents)}[/yellow]")
-        selected_agents = [agent for agent in selected_agents if agent in available_agents]
-
-    if fatigue_increment < 0:
-        console.print("[red]Fatigue increment must be non-negative.[/red]")
-        raise typer.Exit(1)
-
-    if not selected_agents:
-        console.print("[yellow]No valid agents provided; defaulting to configuration order.[/yellow]")
-        selected_agents = available_agents
-
-    if len(selected_agents) > max_agents:
-        console.print(f"[yellow]Limiting orchestration to first {max_agents} agents.[/yellow]")
-        selected_agents = selected_agents[:max_agents]
-
-    console.print(
-        f"[bold blue]Coordinating {len(selected_agents)} agent(s) on topic '{topic}' "
-        f"for {iterations} iteration(s).[/bold blue]"
-    )
-
-    run_history: List[dict[str, Any]] = []
-    for iteration in range(iterations):
-        console.print(f"\n[cyan]Iteration {iteration + 1}/{iterations}[/cyan]")
-        for idx, agent_id in enumerate(selected_agents):
-            fatigue_level = min(1.0, max(0.0, (iteration * fatigue_increment) + (idx * fatigue_increment * 0.5)))
-            console.print(
-                f"[dim]→ Running solo session for {agent_id} (fatigue={fatigue_level:.2f})[/dim]"
-            )
-            score = _run_training_session(agent_id, topic, fatigue_level=fatigue_level)
-            run_history.append({"agent_id": agent_id, "score": score})
-
-    summary_table = Table(title="Agent Performance Summary")
-    summary_table.add_column("Agent")
-    summary_table.add_column("Runs", justify="right")
-    summary_table.add_column("Last Score", justify="right")
-    summary_table.add_column("Avg Score", justify="right")
-    summary_table.add_column("Avg Time (s)", justify="right")
-    summary_table.add_column("Avg Score/min", justify="right")
-    summary_table.add_column("Tokens", justify="right")
-    summary_table.add_column("Tokens/s", justify="right")
-    summary_table.add_column("Score/token", justify="right")
-    summary_table.add_column("GPU Util %", justify="right")
-
-    aggregated_stats = []
-    for agent_id in selected_agents:
-        recent_run = next((entry for entry in reversed(run_history) if entry["agent_id"] == agent_id), None)
-        sample_limit = max(5, iterations * 3)
-        memory_summary = memory_service.summarize_agent_performance(agent_id, topic=topic, limit=sample_limit)
-        stats = memory_summary.get("summary", {})
-
-        aggregated_stats.append(
-            {
-                "agent_id": agent_id,
-                "average_score": stats.get("average_score", 0.0),
-                "average_time": stats.get("average_time_seconds", 0.0),
-                "average_spm": stats.get("average_score_per_minute", 0.0),
-                "average_tokens": stats.get("average_tokens_processed", 0.0),
-                "average_tokens_per_second": stats.get("average_tokens_per_second", 0.0),
-                "average_score_per_token": stats.get("average_score_per_token", 0.0),
-                "average_gpu_utilization": stats.get("average_gpu_utilization", 0.0),
-                "sample_size": stats.get("sample_size", 0),
-            }
-        )
-
-        summary_table.add_row(
-            agent_id,
-            str(stats.get("sample_size", 0)),
-            f"{recent_run['score']:.2f}" if recent_run else "n/a",
-            f"{stats.get('average_score', 0.0):.2f}",
-            f"{stats.get('average_time_seconds', 0.0):.2f}",
-            f"{stats.get('average_score_per_minute', 0.0):.2f}",
-            f"{stats.get('average_tokens_processed', 0.0):.0f}",
-            f"{stats.get('average_tokens_per_second', 0.0):.2f}",
-            f"{stats.get('average_score_per_token', 0.0):.5f}",
-            f"{stats.get('average_gpu_utilization', 0.0):.2f}",
-        )
-
-    console.print("\n")
-    console.print(summary_table)
-
-    if aggregated_stats:
-        top_agent = max(aggregated_stats, key=lambda entry: entry["average_score"])
-        console.print(
-            f"[green]Top performer:[/green] {top_agent['agent_id']} "
-            f"(avg score {top_agent['average_score']:.2f}, "
-            f"avg score/min {top_agent['average_spm']:.2f})"
-        )
-
-    if show_errors:
-        error_table = Table(title="Recent Error Events")
-        error_table.add_column("Agent")
-        error_table.add_column("Timestamp", style="dim")
-        error_table.add_column("Severity")
-        error_table.add_column("Context")
-        error_table.add_column("Message")
-
-        any_errors = False
-        for agent_id in selected_agents:
-            errors = memory_service.get_recent_errors(agent_id, limit=3)
-            for entry in errors.get("entries", []):
-                any_errors = True
-                error_table.add_row(
-                    agent_id,
-                    entry.get("timestamp", "n/a") or "n/a",
-                    entry.get("severity", "unknown"),
-                    entry.get("context", "-") or "-",
-                    entry.get("message", "-") or "-",
-                )
-
-        if any_errors:
-            console.print("\n")
-            console.print(error_table)
-        else:
-            console.print("[green]No recent errors detected for the selected agents.[/green]")
-
-
-@app.command()
-def diagnostics(
-    agent: Optional[str] = typer.Option(None, "--agent", "-a", help="Limit diagnostics to a single agent"),
-    limit: int = typer.Option(5, "--limit", "-l", help="Number of records to inspect per agent"),
-) -> None:
-    """
-    Analyze collection health, metrics, logs, and errors.
-    """
-    console.print("[blue]Gathering datastore diagnostics...[/blue]")
-    stats = memory_service.get_collection_metrics()
-
-    stats_table = Table(title="Collection Metrics")
-    stats_table.add_column("Collection")
-    stats_table.add_column("Documents", justify="right")
-    for name, count in stats.items():
-        stats_table.add_row(name, str(count))
-    console.print(stats_table)
-
-    agents = [agent] if agent else training_manager.config_service.list_agents()
-    perf_table = Table(title="Performance Snapshot")
-    perf_table.add_column("Agent")
-    perf_table.add_column("Samples", justify="right")
-    perf_table.add_column("Avg Score", justify="right")
-    perf_table.add_column("Avg Score/min", justify="right")
-    perf_table.add_column("Tokens", justify="right")
-    perf_table.add_column("GPU Util %", justify="right")
-
-    for agent_id in agents:
-        summary = memory_service.summarize_agent_performance(agent_id, limit=limit)
-        stats_summary = summary.get("summary", {})
-        perf_table.add_row(
-            agent_id,
-            str(stats_summary.get("sample_size", 0)),
-            f"{stats_summary.get('average_score', 0.0):.2f}",
-            f"{stats_summary.get('average_score_per_minute', 0.0):.2f}",
-            f"{stats_summary.get('average_tokens_processed', 0.0):.0f}",
-            f"{stats_summary.get('average_gpu_utilization', 0.0):.2f}",
-        )
-
-    console.print(perf_table)
-
-    error_table = Table(title="Recent Errors")
-    error_table.add_column("Agent")
-    error_table.add_column("Timestamp", style="dim")
-    error_table.add_column("Severity")
-    error_table.add_column("Context")
-    error_table.add_column("Message")
-
-    if agent:
-        error_payloads = [memory_service.get_recent_errors(agent, limit=min(limit, 10))]
-    else:
-        error_payloads = [memory_service.get_recent_errors(None, limit=min(limit * len(agents), 20))]
-
-    has_errors = False
-    for payload in error_payloads:
-        for entry in payload.get("entries", []):
-            has_errors = True
-            error_table.add_row(
-                entry.get("agent_id", payload.get("agent_id", "n/a")),
-                entry.get("timestamp", "n/a") or "n/a",
-                entry.get("severity", "unknown"),
-                entry.get("context", "-") or "-",
-                entry.get("message", "-") or "-",
-            )
-
-    if has_errors:
-        console.print(error_table)
-    else:
-        console.print("[green]No recent error events recorded.[/green]")
-
-
-@app.command("structure-report")
-def structure_report(
-    output: Optional[Path] = typer.Option(
-        None,
-        "--output",
-        "-o",
-        help="Optional file path to save the structural JSON report",
-    ),
-    include_performance: bool = typer.Option(
-        True,
-        "--include-performance/--no-performance",
-        help="Include summarized agent performance metrics",
-    ),
-) -> None:
-    """
-    Export structured YAML/code metadata for pre-merge comparisons.
-    """
-    report = _build_structure_report(include_performance=include_performance)
-    payload = json.dumps(report, indent=2, default=_json_default_serializer)
-
-    if output:
-        output.parent.mkdir(parents=True, exist_ok=True)
-        output.write_text(payload, encoding="utf-8")
-        console.print(f"[green]Structure report saved to {output}[/green]")
-    else:
-        console.print(payload)
 
 
 @app.command()
@@ -803,65 +470,6 @@ def reflex_recommend(
 
     except Exception as e:
         console.print(f"[red]Error getting recommendations: {e}[/red]")
-
-
-def _build_structure_report(include_performance: bool = True) -> Dict[str, Any]:
-    """
-    [CREATE] Construct structured metadata for YAML/code comparison workflows.
-
-    Args:
-        include_performance (bool): When True, include summarized agent metrics.
-
-    Returns:
-        Dict[str, Any]: Structured document combining configuration and runtime data.
-
-    Agent: GPT-5.1 Codex
-    Timestamp: 2025-12-03T06:45:00Z
-    """
-    config_service = training_manager.config_service
-    timestamp = datetime.now(timezone.utc).isoformat()
-
-    report: Dict[str, Any] = {
-        "metadata": {
-            "generated_at": timestamp,
-            "generator": "training structure-report",
-            "schema_version": "1.0.0",
-        },
-        "configs": {
-            "agent_profiles": config_service.load_config("agent_profiles.yaml"),
-            "training_schedule": config_service.load_config("training_schedule.yaml"),
-            "difficulty_curves": config_service.load_config("difficulty_curves.yaml"),
-            "multi_modal_training": config_service.load_config("multi_modal_training.yaml"),
-            "reflection_prompts": config_service.load_config("reflection_prompts.yaml"),
-            "spaced_repetition": config_service.load_config("spaced_repetition.yaml"),
-        },
-    }
-
-    if include_performance:
-        performance: Dict[str, Any] = {}
-        for agent_id in config_service.list_agents():
-            summary = memory_service.summarize_agent_performance(agent_id, limit=5)
-            performance[agent_id] = summary.get("summary", {})
-        report["performance"] = performance
-
-    return report
-
-
-def _json_default_serializer(value: Any) -> Any:
-    """
-    [CREATE] JSON serializer for datetime and Path objects.
-
-    Args:
-        value (Any): Value to serialize.
-
-    Returns:
-        Any: JSON-safe representation.
-    """
-    if isinstance(value, (datetime, )):
-        return value.isoformat()
-    if isinstance(value, Path):
-        return str(value)
-    raise TypeError(f"Object of type {value.__class__.__name__} is not JSON serializable")
 
 
 if __name__ == "__main__":
