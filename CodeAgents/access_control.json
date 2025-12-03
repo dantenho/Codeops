@@ -1,0 +1,106 @@
+{
+  "version": "1.0",
+  "default_permission_level": 1,
+  "agents": {
+    "GrokIA": {
+      "agent_name": "GrokIA",
+      "permission_level": 4,
+      "allowed_resources": [
+        "system",
+        "config",
+        "filesystem",
+        "terminal",
+        "network"
+      ],
+      "allowed_commands": [
+        "*"
+      ],
+      "blocked_commands": [],
+      "max_execution_time": 3600,
+      "rate_limit_per_minute": 1000,
+      "created_at": "2025-12-03T06:16:22.351486+00:00",
+      "last_modified": "2025-12-03T06:16:22.351486+00:00"
+    },
+    "Cline": {
+      "agent_name": "Cline",
+      "permission_level": 4,
+      "allowed_resources": [
+        "system",
+        "config",
+        "filesystem",
+        "terminal",
+        "network"
+      ],
+      "allowed_commands": [
+        "*"
+      ],
+      "blocked_commands": [],
+      "max_execution_time": 3600,
+      "rate_limit_per_minute": 1000,
+      "created_at": "2025-12-03T06:16:22.351486+00:00",
+      "last_modified": "2025-12-03T06:16:22.351486+00:00"
+    },
+    "Antigravity": {
+      "agent_name": "Antigravity",
+      "permission_level": 4,
+      "allowed_resources": [
+        "system",
+        "config",
+        "filesystem",
+        "terminal",
+        "network"
+      ],
+      "allowed_commands": [
+        "*"
+      ],
+      "blocked_commands": [],
+      "max_execution_time": 3600,
+      "rate_limit_per_minute": 1000,
+      "created_at": "2025-12-03T06:16:22.351486+00:00",
+      "last_modified": "2025-12-03T06:16:22.351486+00:00"
+    },
+    "Cursor": {
+      "agent_name": "Cursor",
+      "permission_level": 4,
+      "allowed_resources": [
+        "system",
+        "config",
+        "filesystem",
+        "terminal",
+        "network"
+      ],
+      "allowed_commands": [
+        "*"
+      ],
+      "blocked_commands": [],
+      "max_execution_time": 3600,
+      "rate_limit_per_minute": 1000,
+      "created_at": "2025-12-03T06:16:22.351486+00:00",
+      "last_modified": "2025-12-03T06:16:22.351486+00:00"
+    }
+  },
+  "global_allowed_commands": [],
+  "global_blocked_commands": [
+    "rm -rf /",
+    "sudo",
+    "su",
+    "passwd",
+    "chmod 777",
+    "dd if=",
+    "mkfs",
+    "fdisk",
+    "parted",
+    "mount",
+    "umount",
+    "systemctl",
+    "service",
+    "shutdown",
+    "reboot",
+    "halt",
+    "poweroff",
+    "init",
+    "telinit"
+  ],
+  "audit_log_enabled": true,
+  "max_concurrent_executions": 5
+}

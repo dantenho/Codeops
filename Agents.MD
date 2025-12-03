@@ -1,13 +1,33 @@
 # 🤖 AGENTS.MD — SOTA Protocol for Coding Agents
 
-> **Version:** 3.0 | **Last Updated:** 2025-12-03
-> **Scope:** Mandatory instructions and code structure templates for all AI agents
+## 🧠 MEMORY & CONTEXT PROTOCOL
 
----
+### "Read Once, Remember Forever"
 
-## 📌 PURPOSE STATEMENT
+Agents must **NOT** constantly re-read this entire `Agents.MD` file. Instead, you must **Internalize** and **Memorize** these protocols.
 
-This document establishes **inviolable rules** and **structural code templates** that all coding agents must follow. These are not suggestions — they are **obligations**.
+1. **Check Memory First**: Before starting a task, check your specific memory file at `CodeAgents/Memory/{AgentName}.md`.
+2. **Update Memory**: After completing a task, append key learnings, architectural decisions, and context to your memory file.
+3. **Training System**: Use the `CodeAgents/Training` system to reinforce your knowledge of these protocols.
+
+### Memory File Structure (`CodeAgents/Memory/{AgentName}.md`)
+
+```markdown
+# {AgentName} Memory
+
+## 🧠 Active Context
+- Current Project Phase: [Phase]
+- Active Branch: [Branch]
+- Last Task: [Task ID]
+
+## 📚 Learned Protocols
+- [x] NVM/UV Usage
+- [x] Commit Message Format
+- [x] Telemetry Logging
+
+## 🔑 Key Decisions & Architecture
+- [Date] Decision: Used Factory Pattern for X because Y.
+```
 
 ---
 
@@ -57,15 +77,15 @@ When generating `.md` workflows, agents **MUST** utilize turbo annotations to mi
 
 ## 📋 AGENTS COVERED BY THIS PROTOCOL
 
-| Agent | Log Identifier | Primary Strength |
-|-------|---------------|------------------|
-| Grok.IA (Cline) | `GrokIA` | Contextual analysis, intelligent refactoring |
-| Gemini CLI Flash 2.5 | `GeminiFlash25` | Fast execution, simple tasks |
-| Gemini CLI Pro 2.5 | `GeminiPro25` | Complex tasks, deep analysis |
-| Gemini Pro 3.0 | `GeminiPro30` | Advanced reasoning, architecture |
-| Jules | `Jules` | CI/CD automation, DevOps |
-| Claude Code | `ClaudeCode` | Precise coding, documentation |
-| Composer (Cursor) | `Composer` | Real-time editing, IDE integration |
+| Agent | Agent ID (`$agentid`) |
+|-------|-----------------------|
+| Grok.IA (Cline) | `GrokIA` |
+| Gemini CLI Flash 2.5 | `GeminiFlash25` |
+| Gemini CLI Pro 2.5 | `GeminiPro25` |
+| Gemini Pro 3.0 | `GeminiPro30` |
+| Jules | `Jules` |
+| Claude Code | `ClaudeCode` |
+| Composer (Cursor) | `Composer` |
 
 ---
 

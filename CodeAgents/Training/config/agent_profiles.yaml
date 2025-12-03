@@ -1,0 +1,130 @@
+# Agent Profile Definitions
+
+metadata:
+  schema: agent_profiles
+  version: 1.1.0
+  description: >
+    Structured agent definitions for orchestrated training, GPU analytics,
+    and structure-report comparisons prior to merge.
+  last_updated: 2025-12-03T06:45:00Z
+  maintainer: training_ops
+
+agents:
+  GrokIA:
+    display_name: "Grok IA"
+    specializations: [context_awareness, refactoring]
+    primary_languages: [python, javascript]
+    current_level: 1
+    learning_style: visual
+
+  GeminiFlash25:
+    display_name: "Gemini Flash 2.5"
+    specializations: [fast_execution, simple_tasks]
+    primary_languages: [python, bash]
+    current_level: 1
+    learning_style: practical
+
+  GeminiPro25:
+    display_name: "Gemini Pro 2.5"
+    specializations: [complex_tasks, deep_analysis]
+    primary_languages: [python, java, go]
+    current_level: 1
+    learning_style: analytical
+
+  GeminiPro30:
+    display_name: "Gemini Pro 3.0"
+    specializations: [advanced_reasoning, architecture]
+    primary_languages: [python, rust, c++]
+    current_level: 1
+    learning_style: conceptual
+
+  Jules:
+    display_name: "Jules"
+    specializations: [ci_cd, devops, automation]
+    primary_languages: [yaml, bash, python]
+    current_level: 1
+    learning_style: hands_on
+
+  ClaudeCode:
+    display_name: "Claude Code"
+    specializations: [precise_coding, documentation]
+    primary_languages: [typescript, python, rust]
+    current_level: 1
+    learning_style: structured
+
+  Composer:
+    display_name: "Composer (Cursor)"
+    specializations: [real_time_editing, ide_integration]
+    primary_languages: [typescript, python]
+    current_level: 1
+    learning_style: interactive
+
+defaults:
+  starting_level: 1
+  starting_xp: 0
+  daily_limit_cards: 50
+# Agent Profile Definitions
+
+metadata:
+  schema: agent_profiles
+  version: 1.1.0
+  description: >
+    Structured agent definitions for orchestrated training, GPU analytics,
+    and structure-report comparisons prior to merge.
+  last_updated: 2025-12-03T06:45:00Z
+  maintainer: training_ops
+
+agents:
+  GrokIA:
+    display_name: "Grok IA"
+    specializations: [context_awareness, refactoring]
+    primary_languages: [python, javascript]
+    current_level: 1
+    learning_style: visual
+
+  GeminiFlash25:
+    display_name: "Gemini Flash 2.5"
+    specializations: [fast_execution, simple_tasks]
+    primary_languages: [python, bash]
+    current_level: 1
+    learning_style: practical
+
+  GeminiPro25:
+    display_name: "Gemini Pro 2.5"
+    specializations: [complex_tasks, deep_analysis]
+    primary_languages: [python, java, go]
+    current_level: 1
+    learning_style: analytical
+
+  GeminiPro30:
+    display_name: "Gemini Pro 3.0"
+    specializations: [advanced_reasoning, architecture]
+    primary_languages: [python, rust, c++]
+    current_level: 1
+    learning_style: conceptual
+
+  Jules:
+    display_name: "Jules"
+    specializations: [ci_cd, devops, automation]
+    primary_languages: [yaml, bash, python]
+    current_level: 1
+    learning_style: hands_on
+
+  ClaudeCode:
+    display_name: "Claude Code"
+    specializations: [precise_coding, documentation]
+    primary_languages: [typescript, python, rust]
+    current_level: 1
+    learning_style: structured
+
+  Composer:
+    display_name: "Composer (Cursor)"
+    specializations: [real_time_editing, ide_integration]
+    primary_languages: [typescript, python]
+    current_level: 1
+    learning_style: interactive
+
+defaults:
+  starting_level: 1
+  starting_xp: 0
+  daily_limit_cards: 50

@@ -3,7 +3,16 @@ Module: rag.py
 Purpose: RAG system using ChromaDB and FAISS with GPU support.
 
 Provides a vector store interface for storing and retrieving code embeddings,
-utilizing GPU acceleration where available.
+utilizing GPU acceleration where available. The RAGEngine class manages the
+ChromaDB vector database, handles document indexing, and performs semantic
+search operations. It automatically detects and uses GPU resources when
+available for faster embedding generation.
+
+Main Components:
+- RAGEngine: Main class for vector database operations
+- SearchResult: Data structure for search results
+- GPU detection: Automatic CUDA availability checking
+- ChromaDB integration: Persistent vector store with cosine similarity
 
 Agent: Antigravity
 Created: 2025-12-03T05:12:00Z

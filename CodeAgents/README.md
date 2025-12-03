@@ -30,16 +30,19 @@ All telemetry files MUST follow this naming convention:
 ```
 
 **Examples:**
+
 - `log_2025-12-03T14-30-00_a1b2c3.json`
 - `error_2025-12-03T14-30-00_d4e5f6.json`
 
 ## 📊 Schemas
 
 ### Operation Log
+
 See `schemas/operation_schema.json` for the full schema.
 Required fields: `agent`, `timestamp`, `operation`, `target`, `status`.
 
 ### Error Log
+
 See `schemas/error_schema.json` for the full schema.
 Required fields: `agent`, `timestamp`, `error_type`, `message`, `severity`.
 

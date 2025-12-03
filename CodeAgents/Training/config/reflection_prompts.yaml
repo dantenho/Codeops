@@ -1,0 +1,32 @@
+metadata:
+  schema: reflection_prompts
+  version: 1.1.0
+  description: >
+    Standardized prompts for structural learning analysis exported via
+    structure-report before merge reviews.
+  last_updated: 2025-12-03T06:45:00Z
+  maintainer: training_ops
+
+reflection_prompts:
+  post_exercise:
+    general:
+      - "What was the most challenging part of this exercise?"
+      - "What new concept did you learn?"
+    adaptive: []
+
+  daily_summary:
+    performance:
+      - "How did your performance change throughout the session?"
+      - "What factors contributed to your fatigue?"
+    improvement:
+      - "What is one thing you will do differently tomorrow?"
+
+adaptive_prompting:
+  struggling_agent:
+    additional_prompts:
+      - "What specific error messages did you encounter?"
+      - "Do you need to review the foundational concepts?"
+  excelling_agent:
+    additional_prompts:
+      - "How could you optimize this solution further?"
+      - "Can you implement this using a different pattern?"

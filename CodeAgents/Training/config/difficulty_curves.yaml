@@ -1,0 +1,66 @@
+# Difficulty Progression Configuration
+
+metadata:
+  schema: difficulty_curves
+  version: 1.1.0
+  description: >
+    Canonical XP thresholds and concept ladders leveraged by orchestration and
+    structural comparison workflows.
+  last_updated: 2025-12-03T06:45:00Z
+  maintainer: training_ops
+
+levels:
+  1:
+    name: "Foundations"
+    xp_required: 0
+    concepts:
+      - syntax_basics
+      - control_flow
+      - functions
+      - error_handling
+
+  2:
+    name: "Intermediate"
+    xp_required: 500
+    concepts:
+      - oop_basics
+      - data_structures
+      - file_io
+      - basic_testing
+
+  3:
+    name: "Advanced"
+    xp_required: 1500
+    concepts:
+      - design_patterns
+      - concurrency
+      - networking
+      - database_optimization
+
+  4:
+    name: "Expert"
+    xp_required: 4000
+    concepts:
+      - distributed_systems
+      - security_architecture
+      - performance_tuning
+      - compiler_design
+
+  5:
+    name: "Master"
+    xp_required: 10000
+    concepts:
+      - system_architecture
+      - novel_algorithms
+      - research_implementation
+      - cross_domain_expertise
+
+xp_rewards:
+  exercise_completion:
+    base: 50
+    level_multiplier: 1.5
+  flashcard_review:
+    base: 5
+  assessment_pass:
+    base: 200
+  perfect_score_bonus: 50

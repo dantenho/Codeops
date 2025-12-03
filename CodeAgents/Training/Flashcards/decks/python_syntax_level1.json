@@ -1,0 +1,217 @@
+{
+  "deck_id": "deck_python_syntax_l1",
+  "name": "Python Syntax - Level 1",
+  "description": "Fundamental Python syntax patterns and rules",
+  "language": "python",
+  "level": 1,
+  "created_at": "2025-12-03T00:00:00Z",
+  "cards": [
+    {
+      "id": "FC-PY-0001",
+      "category": "syntax",
+      "language": "python",
+      "level": 1,
+      "difficulty": 1,
+      "tags": ["variables", "assignment", "basics"],
+      "front": {
+        "question": "How do you assign a value to a variable in Python?",
+        "hints": [
+          "Python uses a simple operator for assignment",
+          "No type declaration needed"
+        ]
+      },
+      "back": {
+        "answer": "Use the equals sign (=) operator",
+        "code": "x = 10\nname = \"Alice\"",
+        "explanation": "Python uses dynamic typing, so you don't need to declare the type. Just use variable_name = value.",
+        "related_concepts": ["dynamic typing", "variable naming"],
+        "common_mistakes": [
+          "Using == (comparison) instead of = (assignment)",
+          "Starting variable names with numbers"
+        ],
+        "references": [
+          "https://docs.python.org/3/tutorial/introduction.html"
+        ]
+      },
+      "sr_data": {
+        "interval_days": 0,
+        "ease_factor": 2.5,
+        "repetitions": 0,
+        "next_review": "2025-12-03",
+        "last_review": null,
+        "history": [],
+        "lapses": 0,
+        "is_leech": false
+      },
+      "created_at": "2025-12-03T00:00:00Z",
+      "updated_at": "2025-12-03T00:00:00Z",
+      "suspended": false
+    },
+    {
+      "id": "FC-PY-0002",
+      "category": "syntax",
+      "language": "python",
+      "level": 1,
+      "difficulty": 1,
+      "tags": ["strings", "concatenation"],
+      "front": {
+        "question": "What are two ways to concatenate strings in Python?",
+        "code": "first = \"Hello\"\nsecond = \"World\"",
+        "hints": [
+          "One uses an operator, one uses formatting",
+          "The + operator works with strings"
+        ]
+      },
+      "back": {
+        "answer": "Using + operator or f-strings (formatted string literals)",
+        "code": "# Method 1: + operator\nresult = first + \" \" + second\n\n# Method 2: f-strings\nresult = f\"{first} {second}\"",
+        "explanation": "The + operator concatenates strings sequentially. F-strings (Python 3.6+) provide a more readable way to embed expressions in strings.",
+        "related_concepts": ["string formatting", "string methods"],
+        "common_mistakes": [
+          "Forgetting spaces between concatenated strings",
+          "Trying to concatenate strings with numbers without conversion"
+        ],
+        "references": [
+          "https://docs.python.org/3/tutorial/introduction.html#strings"
+        ]
+      },
+      "sr_data": {
+        "interval_days": 0,
+        "ease_factor": 2.5,
+        "repetitions": 0,
+        "next_review": "2025-12-03",
+        "last_review": null,
+        "history": [],
+        "lapses": 0,
+        "is_leech": false
+      },
+      "created_at": "2025-12-03T00:00:00Z",
+      "updated_at": "2025-12-03T00:00:00Z",
+      "suspended": false
+    },
+    {
+      "id": "FC-PY-0003",
+      "category": "concept",
+      "language": "python",
+      "level": 1,
+      "difficulty": 2,
+      "tags": ["data_types", "immutability"],
+      "front": {
+        "question": "Which Python data types are immutable?",
+        "hints": [
+          "Think about strings, numbers, and tuples",
+          "Immutable means they cannot be changed after creation"
+        ]
+      },
+      "back": {
+        "answer": "int, float, str, tuple, frozenset, bool",
+        "explanation": "Immutable types cannot be modified after creation. Any operation that seems to modify them actually creates a new object. Mutable types include list, dict, and set.",
+        "related_concepts": ["mutability", "object references", "memory management"],
+        "common_mistakes": [
+          "Thinking strings can be modified in place",
+          "Confusing tuple with list"
+        ],
+        "references": [
+          "https://docs.python.org/3/library/stdtypes.html"
+        ]
+      },
+      "sr_data": {
+        "interval_days": 0,
+        "ease_factor": 2.5,
+        "repetitions": 0,
+        "next_review": "2025-12-03",
+        "last_review": null,
+        "history": [],
+        "lapses": 0,
+        "is_leech": false
+      },
+      "created_at": "2025-12-03T00:00:00Z",
+      "updated_at": "2025-12-03T00:00:00Z",
+      "suspended": false
+    },
+    {
+      "id": "FC-PY-0004",
+      "category": "syntax",
+      "language": "python",
+      "level": 1,
+      "difficulty": 1,
+      "tags": ["control_flow", "conditionals"],
+      "front": {
+        "question": "What is the syntax for an if-elif-else statement in Python?",
+        "hints": [
+          "Python uses indentation instead of braces",
+          "Don't forget the colons"
+        ]
+      },
+      "back": {
+        "answer": "if condition:\n    # code\nelif condition:\n    # code\nelse:\n    # code",
+        "code": "x = 10\nif x > 15:\n    print(\"Greater than 15\")\nelif x > 5:\n    print(\"Greater than 5\")\nelse:\n    print(\"5 or less\")",
+        "explanation": "Python uses indentation (4 spaces recommended) to define code blocks. Each condition ends with a colon. elif (else-if) and else are optional.",
+        "related_concepts": ["indentation", "boolean expressions", "comparison operators"],
+        "common_mistakes": [
+          "Forgetting the colon after conditions",
+          "Incorrect indentation",
+          "Using = instead of == for comparison"
+        ],
+        "references": [
+          "https://docs.python.org/3/tutorial/controlflow.html"
+        ]
+      },
+      "sr_data": {
+        "interval_days": 0,
+        "ease_factor": 2.5,
+        "repetitions": 0,
+        "next_review": "2025-12-03",
+        "last_review": null,
+        "history": [],
+        "lapses": 0,
+        "is_leech": false
+      },
+      "created_at": "2025-12-03T00:00:00Z",
+      "updated_at": "2025-12-03T00:00:00Z",
+      "suspended": false
+    },
+    {
+      "id": "FC-PY-0005",
+      "category": "syntax",
+      "language": "python",
+      "level": 1,
+      "difficulty": 1,
+      "tags": ["lists", "indexing"],
+      "front": {
+        "question": "How do you access the first and last elements of a list in Python?",
+        "code": "items = [10, 20, 30, 40, 50]",
+        "hints": [
+          "Python uses zero-based indexing",
+          "Negative indices count from the end"
+        ]
+      },
+      "back": {
+        "answer": "Use index [0] for first, [-1] for last",
+        "code": "first = items[0]  # 10\nlast = items[-1]  # 50",
+        "explanation": "Python uses zero-based indexing, so [0] gets the first element. Negative indices count backward from the end, so [-1] is the last element, [-2] is second-to-last, etc.",
+        "related_concepts": ["list slicing", "indexing", "sequences"],
+        "common_mistakes": [
+          "Using [1] for the first element (off-by-one error)",
+          "Forgetting that indices start at 0"
+        ],
+        "references": [
+          "https://docs.python.org/3/tutorial/introduction.html#lists"
+        ]
+      },
+      "sr_data": {
+        "interval_days": 0,
+        "ease_factor": 2.5,
+        "repetitions": 0,
+        "next_review": "2025-12-03",
+        "last_review": null,
+        "history": [],
+        "lapses": 0,
+        "is_leech": false
+      },
+      "created_at": "2025-12-03T00:00:00Z",
+      "updated_at": "2025-12-03T00:00:00Z",
+      "suspended": false
+    }
+  ]
+}

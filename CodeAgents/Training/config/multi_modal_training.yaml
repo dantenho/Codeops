@@ -1,0 +1,114 @@
+metadata:
+  schema: multi_modal_training
+  version: 1.1.0
+  description: >
+    Defines structured multi-modal learning tactics so structure-report exports
+    can diff training blueprints between branches.
+  last_updated: 2025-12-03T06:45:00Z
+  maintainer: training_ops
+
+multi_modal_training:
+  # Different learning approaches beyond text-based exercises
+
+  visual_learning:
+    enabled: true
+    approaches:
+      - code_diagrams: true
+      - flow_charts: true
+      - architecture_visualization: true
+      - data_structure_diagrams: true
+
+    tools:
+      - graphviz_diagrams: true
+      - mermaid_charts: true
+      - plantuml: true
+      - ascii_art: true
+
+  interactive_learning:
+    enabled: true
+    approaches:
+      - debugging_sessions: true
+      - step_through_execution: true
+      - variable_inspection: true
+      - breakpoint_analysis: true
+
+    scenarios:
+      - error_tracing: true
+      - performance_optimization: true
+      - refactoring_exercises: true
+      - code_review_simulations: true
+
+  kinesthetic_learning:
+    enabled: true
+    approaches:
+      - hands_on_projects: true
+      - refactoring_exercises: true
+      - optimization_challenges: true
+      - system_design_tasks: true
+
+    activities:
+      - build_from_scratch: true
+      - modify_existing_code: true
+      - performance_tuning: true
+      - debugging_real_issues: true
+
+  mixed_difficulty_practice:
+    enabled: true
+    interleaving_strategies:
+      - topic_mixing: true
+      - difficulty_variation: true
+      - concept_connection: true
+      - spaced_repetition_blending: true
+
+    session_structure:
+      - warm_up_easy: true
+      - core_mixed_difficulty: true
+      - cool_down_review: true
+      - meta_learning_reflection: true
+
+  real_world_scenarios:
+    enabled: true
+    scenarios:
+      - web_api_design: true
+      - database_optimization: true
+      - concurrent_processing: true
+      - security_hardening: true
+      - performance_monitoring: true
+
+    business_contexts:
+      - e_commerce_platform: true
+      - data_analytics_system: true
+      - iot_device_network: true
+      - cloud_service_architecture: true
+      - mobile_application: true
+
+  adaptive_pacing:
+    enabled: true
+    personalization:
+      - skill_based_pacing: true
+      - confidence_driven_progression: true
+      - interest_based_topic_selection: true
+      - learning_style_adaptation: true
+
+    feedback_loops:
+      - real_time_difficulty_adjustment: true
+      - progress_based_encouragement: true
+      - plateau_detection_intervention: true
+      - mastery_acceleration: true
+
+  collaborative_elements:
+    enabled: false # Future feature
+    features:
+      - peer_code_reviews: false
+      - pair_programming_simulation: false
+      - knowledge_sharing: false
+      - team_challenges: false
+
+  gamification_integration:
+    enabled: true
+    elements:
+      - achievement_unlocks: true
+      - streak_maintenance: true
+      - leaderboard_competition: false
+      - badge_system: true
+      - narrative_progression: true

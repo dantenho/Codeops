@@ -1,0 +1,679 @@
+{
+  "metadata": {
+    "generated_at": "2025-12-03T07:35:18.011762+00:00",
+    "generator": "training structure-report",
+    "schema_version": "1.0.0"
+  },
+  "configs": {
+    "agent_profiles": {
+      "metadata": {
+        "schema": "agent_profiles",
+        "version": "1.1.0",
+        "description": "Structured agent definitions for orchestrated training, GPU analytics, and structure-report comparisons prior to merge.\n",
+        "last_updated": "2025-12-03T06:45:00+00:00",
+        "maintainer": "training_ops"
+      },
+      "agents": {
+        "GrokIA": {
+          "display_name": "Grok IA",
+          "specializations": [
+            "context_awareness",
+            "refactoring"
+          ],
+          "primary_languages": [
+            "python",
+            "javascript"
+          ],
+          "current_level": 1,
+          "learning_style": "visual"
+        },
+        "GeminiFlash25": {
+          "display_name": "Gemini Flash 2.5",
+          "specializations": [
+            "fast_execution",
+            "simple_tasks"
+          ],
+          "primary_languages": [
+            "python",
+            "bash"
+          ],
+          "current_level": 1,
+          "learning_style": "practical"
+        },
+        "GeminiPro25": {
+          "display_name": "Gemini Pro 2.5",
+          "specializations": [
+            "complex_tasks",
+            "deep_analysis"
+          ],
+          "primary_languages": [
+            "python",
+            "java",
+            "go"
+          ],
+          "current_level": 1,
+          "learning_style": "analytical"
+        },
+        "GeminiPro30": {
+          "display_name": "Gemini Pro 3.0",
+          "specializations": [
+            "advanced_reasoning",
+            "architecture"
+          ],
+          "primary_languages": [
+            "python",
+            "rust",
+            "c++"
+          ],
+          "current_level": 1,
+          "learning_style": "conceptual"
+        },
+        "Jules": {
+          "display_name": "Jules",
+          "specializations": [
+            "ci_cd",
+            "devops",
+            "automation"
+          ],
+          "primary_languages": [
+            "yaml",
+            "bash",
+            "python"
+          ],
+          "current_level": 1,
+          "learning_style": "hands_on"
+        },
+        "ClaudeCode": {
+          "display_name": "Claude Code",
+          "specializations": [
+            "precise_coding",
+            "documentation"
+          ],
+          "primary_languages": [
+            "typescript",
+            "python",
+            "rust"
+          ],
+          "current_level": 1,
+          "learning_style": "structured"
+        },
+        "Composer": {
+          "display_name": "Composer (Cursor)",
+          "specializations": [
+            "real_time_editing",
+            "ide_integration"
+          ],
+          "primary_languages": [
+            "typescript",
+            "python"
+          ],
+          "current_level": 1,
+          "learning_style": "interactive"
+        }
+      },
+      "defaults": {
+        "starting_level": 1,
+        "starting_xp": 0,
+        "daily_limit_cards": 50
+      }
+    },
+    "training_schedule": {
+      "metadata": {
+        "schema": "training_schedule",
+        "version": "1.1.0",
+        "description": "Canonical cadence definitions exported via structure-report for branch comparison and review workflows.\n",
+        "last_updated": "2025-12-03T06:45:00+00:00",
+        "maintainer": "training_ops"
+      },
+      "schedule": {
+        "daily": {
+          "enabled": true,
+          "time_slots": [
+            "02:00",
+            "14:00"
+          ],
+          "duration_minutes": 30,
+          "activities": [
+            {
+              "type": "flashcard_review",
+              "max_cards": 50
+            },
+            {
+              "type": "syntax_drill",
+              "count": 3
+            }
+          ]
+        },
+        "weekly": {
+          "enabled": true,
+          "day": "saturday",
+          "time": "10:00",
+          "duration_minutes": 120,
+          "focus_rotation": [
+            "algorithms",
+            "design_patterns",
+            "security",
+            "optimization"
+          ],
+          "activities": [
+            {
+              "type": "deep_dive",
+              "duration_minutes": 60
+            },
+            {
+              "type": "coding_kata",
+              "difficulty": "current_level + 1"
+            },
+            {
+              "type": "reflection",
+              "questions": 3
+            }
+          ]
+        },
+        "monthly": {
+          "enabled": true,
+          "day": "last_saturday",
+          "time": "08:00",
+          "duration_minutes": 360,
+          "certification_required": true
+        },
+        "quarterly": {
+          "enabled": true,
+          "duration_minutes": 480,
+          "assessment_type": "comprehensive"
+        }
+      }
+    },
+    "difficulty_curves": {
+      "metadata": {
+        "schema": "difficulty_curves",
+        "version": "1.1.0",
+        "description": "Canonical XP thresholds and concept ladders leveraged by orchestration and structural comparison workflows.\n",
+        "last_updated": "2025-12-03T06:45:00+00:00",
+        "maintainer": "training_ops"
+      },
+      "levels": {
+        "1": {
+          "name": "Foundations",
+          "xp_required": 0,
+          "concepts": [
+            "syntax_basics",
+            "control_flow",
+            "functions",
+            "error_handling"
+          ]
+        },
+        "2": {
+          "name": "Intermediate",
+          "xp_required": 500,
+          "concepts": [
+            "oop_basics",
+            "data_structures",
+            "file_io",
+            "basic_testing"
+          ]
+        },
+        "3": {
+          "name": "Advanced",
+          "xp_required": 1500,
+          "concepts": [
+            "design_patterns",
+            "concurrency",
+            "networking",
+            "database_optimization"
+          ]
+        },
+        "4": {
+          "name": "Expert",
+          "xp_required": 4000,
+          "concepts": [
+            "distributed_systems",
+            "security_architecture",
+            "performance_tuning",
+            "compiler_design"
+          ]
+        },
+        "5": {
+          "name": "Master",
+          "xp_required": 10000,
+          "concepts": [
+            "system_architecture",
+            "novel_algorithms",
+            "research_implementation",
+            "cross_domain_expertise"
+          ]
+        }
+      },
+      "xp_rewards": {
+        "exercise_completion": {
+          "base": 50,
+          "level_multiplier": 1.5
+        },
+        "flashcard_review": {
+          "base": 5
+        },
+        "assessment_pass": {
+          "base": 200
+        },
+        "perfect_score_bonus": 50
+      }
+    },
+    "multi_modal_training": {
+      "metadata": {
+        "schema": "multi_modal_training",
+        "version": "1.1.0",
+        "description": "Defines structured multi-modal learning tactics so structure-report exports can diff training blueprints between branches.\n",
+        "last_updated": "2025-12-03T06:45:00+00:00",
+        "maintainer": "training_ops"
+      },
+      "multi_modal_training": {
+        "visual_learning": {
+          "enabled": true,
+          "approaches": [
+            {
+              "code_diagrams": true
+            },
+            {
+              "flow_charts": true
+            },
+            {
+              "architecture_visualization": true
+            },
+            {
+              "data_structure_diagrams": true
+            }
+          ],
+          "tools": [
+            {
+              "graphviz_diagrams": true
+            },
+            {
+              "mermaid_charts": true
+            },
+            {
+              "plantuml": true
+            },
+            {
+              "ascii_art": true
+            }
+          ]
+        },
+        "interactive_learning": {
+          "enabled": true,
+          "approaches": [
+            {
+              "debugging_sessions": true
+            },
+            {
+              "step_through_execution": true
+            },
+            {
+              "variable_inspection": true
+            },
+            {
+              "breakpoint_analysis": true
+            }
+          ],
+          "scenarios": [
+            {
+              "error_tracing": true
+            },
+            {
+              "performance_optimization": true
+            },
+            {
+              "refactoring_exercises": true
+            },
+            {
+              "code_review_simulations": true
+            }
+          ]
+        },
+        "kinesthetic_learning": {
+          "enabled": true,
+          "approaches": [
+            {
+              "hands_on_projects": true
+            },
+            {
+              "refactoring_exercises": true
+            },
+            {
+              "optimization_challenges": true
+            },
+            {
+              "system_design_tasks": true
+            }
+          ],
+          "activities": [
+            {
+              "build_from_scratch": true
+            },
+            {
+              "modify_existing_code": true
+            },
+            {
+              "performance_tuning": true
+            },
+            {
+              "debugging_real_issues": true
+            }
+          ]
+        },
+        "mixed_difficulty_practice": {
+          "enabled": true,
+          "interleaving_strategies": [
+            {
+              "topic_mixing": true
+            },
+            {
+              "difficulty_variation": true
+            },
+            {
+              "concept_connection": true
+            },
+            {
+              "spaced_repetition_blending": true
+            }
+          ],
+          "session_structure": [
+            {
+              "warm_up_easy": true
+            },
+            {
+              "core_mixed_difficulty": true
+            },
+            {
+              "cool_down_review": true
+            },
+            {
+              "meta_learning_reflection": true
+            }
+          ]
+        },
+        "real_world_scenarios": {
+          "enabled": true,
+          "scenarios": [
+            {
+              "web_api_design": true
+            },
+            {
+              "database_optimization": true
+            },
+            {
+              "concurrent_processing": true
+            },
+            {
+              "security_hardening": true
+            },
+            {
+              "performance_monitoring": true
+            }
+          ],
+          "business_contexts": [
+            {
+              "e_commerce_platform": true
+            },
+            {
+              "data_analytics_system": true
+            },
+            {
+              "iot_device_network": true
+            },
+            {
+              "cloud_service_architecture": true
+            },
+            {
+              "mobile_application": true
+            }
+          ]
+        },
+        "adaptive_pacing": {
+          "enabled": true,
+          "personalization": [
+            {
+              "skill_based_pacing": true
+            },
+            {
+              "confidence_driven_progression": true
+            },
+            {
+              "interest_based_topic_selection": true
+            },
+            {
+              "learning_style_adaptation": true
+            }
+          ],
+          "feedback_loops": [
+            {
+              "real_time_difficulty_adjustment": true
+            },
+            {
+              "progress_based_encouragement": true
+            },
+            {
+              "plateau_detection_intervention": true
+            },
+            {
+              "mastery_acceleration": true
+            }
+          ]
+        },
+        "collaborative_elements": {
+          "enabled": false,
+          "features": [
+            {
+              "peer_code_reviews": false
+            },
+            {
+              "pair_programming_simulation": false
+            },
+            {
+              "knowledge_sharing": false
+            },
+            {
+              "team_challenges": false
+            }
+          ]
+        },
+        "gamification_integration": {
+          "enabled": true,
+          "elements": [
+            {
+              "achievement_unlocks": true
+            },
+            {
+              "streak_maintenance": true
+            },
+            {
+              "leaderboard_competition": false
+            },
+            {
+              "badge_system": true
+            },
+            {
+              "narrative_progression": true
+            }
+          ]
+        }
+      }
+    },
+    "reflection_prompts": {
+      "metadata": {
+        "schema": "reflection_prompts",
+        "version": "1.1.0",
+        "description": "Standardized prompts for structural learning analysis exported via structure-report before merge reviews.\n",
+        "last_updated": "2025-12-03T06:45:00+00:00",
+        "maintainer": "training_ops"
+      },
+      "reflection_prompts": {
+        "post_exercise": {
+          "general": [
+            "What was the most challenging part of this exercise?",
+            "What new concept did you learn?"
+          ],
+          "adaptive": []
+        },
+        "daily_summary": {
+          "performance": [
+            "How did your performance change throughout the session?",
+            "What factors contributed to your fatigue?"
+          ],
+          "improvement": [
+            "What is one thing you will do differently tomorrow?"
+          ]
+        }
+      },
+      "adaptive_prompting": {
+        "struggling_agent": {
+          "additional_prompts": [
+            "What specific error messages did you encounter?",
+            "Do you need to review the foundational concepts?"
+          ]
+        },
+        "excelling_agent": {
+          "additional_prompts": [
+            "How could you optimize this solution further?",
+            "Can you implement this using a different pattern?"
+          ]
+        }
+      }
+    },
+    "spaced_repetition": {
+      "metadata": {
+        "schema": "spaced_repetition",
+        "version": "1.1.0",
+        "description": "Parameterized SM-2 settings shared across agents and exported via structure-report for reproducible comparisons.\n",
+        "last_updated": "2025-12-03T06:45:00+00:00",
+        "maintainer": "training_ops"
+      },
+      "algorithm": "SM-2",
+      "parameters": {
+        "initial_ease_factor": 2.5,
+        "minimum_ease_factor": 1.3,
+        "ease_bonus": 0.15,
+        "ease_penalty": 0.2,
+        "interval_modifier": 1.0
+      },
+      "intervals": {
+        "new_card": {
+          "learning_steps": [
+            1,
+            10
+          ],
+          "graduating_interval": 1,
+          "easy_interval": 4
+        },
+        "review": {
+          "minimum_interval": 1,
+          "maximum_interval": 365,
+          "hard_interval_modifier": 1.2,
+          "new_interval_after_lapse": 0.7
+        }
+      },
+      "ratings": {
+        "again": {
+          "value": 0,
+          "description": "Complete blackout",
+          "ease_change": -0.2,
+          "interval_reset": true
+        },
+        "hard": {
+          "value": 1,
+          "description": "Correct but difficult",
+          "ease_change": -0.15,
+          "interval_modifier": 1.2
+        },
+        "good": {
+          "value": 2,
+          "description": "Correct with moderate effort",
+          "ease_change": 0.0,
+          "interval_modifier": null
+        },
+        "easy": {
+          "value": 3,
+          "description": "Effortless recall",
+          "ease_change": 0.15,
+          "interval_modifier": 1.3
+        }
+      },
+      "daily_limits": {
+        "new_cards": 20,
+        "reviews": 100
+      },
+      "leech": {
+        "threshold": 8,
+        "action": "suspend"
+      }
+    }
+  },
+  "performance": {
+    "GrokIA": {
+      "sample_size": 2,
+      "average_score": 95.09290099143982,
+      "average_time_seconds": 0.49070990085601807,
+      "average_score_per_minute": 11633.078806403857,
+      "average_tokens_processed": 52.5,
+      "average_tokens_per_second": 104.68964789345094,
+      "average_score_per_token": 0.4523103691282726,
+      "average_gpu_utilization": 0.5,
+      "average_gpu_memory_used_mb": 1109.376953125
+    },
+    "GeminiFlash25": {
+      "sample_size": 2,
+      "average_score": 95.64933061599731,
+      "average_time_seconds": 0.43506693840026855,
+      "average_score_per_minute": 13275.183764187708,
+      "average_tokens_processed": 52.5,
+      "average_tokens_per_second": 111.9500629652809,
+      "average_score_per_token": 0.4538590908050537,
+      "average_gpu_utilization": 0.5,
+      "average_gpu_memory_used_mb": 1108.685546875
+    },
+    "GeminiPro25": {
+      "sample_size": 2,
+      "average_score": 94.81616973876953,
+      "average_time_seconds": 0.5183830261230469,
+      "average_score_per_minute": 10979.276488675361,
+      "average_tokens_processed": 52.5,
+      "average_tokens_per_second": 103.38655698912615,
+      "average_score_per_token": 0.4520093827020554,
+      "average_gpu_utilization": 0.5,
+      "average_gpu_memory_used_mb": 1106.841796875
+    },
+    "GeminiPro30": {
+      "sample_size": 4,
+      "average_score": 94.1766107082367,
+      "average_time_seconds": 0.5823389291763306,
+      "average_score_per_minute": 10670.509250652283,
+      "average_tokens_processed": 0.0,
+      "average_tokens_per_second": 0.0,
+      "average_score_per_token": 0.0,
+      "average_gpu_utilization": 0.0,
+      "average_gpu_memory_used_mb": 0.0
+    },
+    "Jules": {
+      "sample_size": 0,
+      "average_score": 0.0,
+      "average_time_seconds": 0.0,
+      "average_score_per_minute": 0.0
+    },
+    "ClaudeCode": {
+      "sample_size": 5,
+      "average_score": 93.87316608428955,
+      "average_time_seconds": 0.6126833915710449,
+      "average_score_per_minute": 9604.68290338034,
+      "average_tokens_processed": 0.0,
+      "average_tokens_per_second": 0.0,
+      "average_score_per_token": 0.0,
+      "average_gpu_utilization": 0.0,
+      "average_gpu_memory_used_mb": 0.0
+    },
+    "Composer": {
+      "sample_size": 0,
+      "average_score": 0.0,
+      "average_time_seconds": 0.0,
+      "average_score_per_minute": 0.0
+    }
+  }
+}

@@ -1,0 +1,52 @@
+# Agent Training Schedule Configuration
+# See AGENT_TRAINING_SYSTEM.md for full specification
+
+metadata:
+  schema: training_schedule
+  version: 1.1.0
+  description: >
+    Canonical cadence definitions exported via structure-report for branch
+    comparison and review workflows.
+  last_updated: 2025-12-03T06:45:00Z
+  maintainer: training_ops
+
+schedule:
+  daily:
+    enabled: true
+    time_slots: ["02:00", "14:00"]  # UTC
+    duration_minutes: 30
+    activities:
+      - type: flashcard_review
+        max_cards: 50
+      - type: syntax_drill
+        count: 3
+
+  weekly:
+    enabled: true
+    day: saturday
+    time: "10:00"
+    duration_minutes: 120
+    focus_rotation:
+      - algorithms
+      - design_patterns
+      - security
+      - optimization
+    activities:
+      - type: deep_dive
+        duration_minutes: 60
+      - type: coding_kata
+        difficulty: current_level + 1
+      - type: reflection
+        questions: 3
+
+  monthly:
+    enabled: true
+    day: last_saturday
+    time: "08:00"
+    duration_minutes: 360
+    certification_required: true
+
+  quarterly:
+    enabled: true
+    duration_minutes: 480
+    assessment_type: "comprehensive"
