@@ -1,0 +1,107 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+pip-wheel-metadata/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual Environments
+venv/
+.venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+
+# IDE
+.vscode/
+.idea/
+.cursor/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+chroma_db/
+*.sql
+
+# Logs and telemetry
+*.log
+*.txt
+!requirements.txt
+!README.txt
+token_metrics/
+logs/
+diary_*.log
+*TELEMETRIC.txt
+
+# Runtime data
+data/progress/backups/
+data/progress/current/
+data/progress/history/
+uv.lock
+
+# Agent-specific runtime data
+CodeAgents/ID/*/logs/
+CodeAgents/ID/*/diary_*.log
+CodeAgents/ID/*/*TELEMETRIC.txt
+CodeAgents/ID/*/2025-12-03T*/
+CodeAgents/Memory/*.md
+
+# Temporary files
+Annotations/
+Anotations/
+*.tmp
+*.temp
+NUL
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Test coverage
+.coverage
+.pytest_cache/
+htmlcov/
+.tox/
+.hypothesis/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# Package files
+*.ps1
+*.bat
+
+# Backup files
+*.bak
+*.backup
+*~
