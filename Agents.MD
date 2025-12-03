@@ -86,6 +86,10 @@ When generating `.md` workflows, agents **MUST** utilize turbo annotations to mi
 | Jules | `Jules` |
 | Claude Code | `ClaudeCode` |
 | Composer (Cursor) | `Composer` |
+Z.AI
+Dependabot
+Antigravity
+##Write your name as a id and create database
 
 ---
 
@@ -96,29 +100,28 @@ When generating `.md` workflows, agents **MUST** utilize turbo annotations to mi
 ```
 ❌ FORBIDDEN: Duplicate task assignment
 ❌ FORBIDDEN: Overlapping responsibilities
-✅ REQUIRED:  Single agent per task
 ✅ REQUIRED:  Clear ownership boundaries
-```
 
----
 
-## 📝 MANDATORY DOCUMENTATION PROTOCOL
+## MANDATORY DOCUMENTATION PROTOCOL
 
 ### WRITETODO — Every Code Operation Must Include
 
 ```
-├── [OPERATION_TAG] at comment start ([CREATE], [REFACTOR], [DEBUG])
+├── [OPERATION_TAG] at comment start ([CREATE], [REFACTOR], [DEBUG], etc)
 ├── Detailed description of purpose
-├── All parameters with types, descriptions, constraints
+├── All parameters with types, descriptions, constraints, classe
 ├── Return values with types and edge cases
 ├── Exceptions/errors that may be raised
 ├── Usage examples
 ├── Complexity analysis (Big O) for critical functions
-├── Side effects documentation
+├── Side effects documentation if apliable
 ├── Design patterns used (if applicable)
 ├── Thread safety notes (if applicable)
 ├── Agent signature: "Agent: {AgentName}"
 └── Timestamp: ISO 8601 format
+Token Used
+Telemetry Log with datasttamp in agent database directory
 ```
 
 ---
@@ -155,8 +158,18 @@ CodeAgents/
 │   └── analysis/
 └── Composer/
     ├── logs/
-    ├── errors/
+    ├── errors/ (Python script with coments, to create reflections
+    Reflections Error Database
+    Error Handling Log
+    Telemetry Log)
     └── analysis/
+    MEtrics
+
+####ADICIONAR METRICS, Accuracy Speed Quality Reliability Tokenusage, Error handleing, Unit test, Debug, Code Simulation, Adaptability, task, Contest, lenguage, complexity, performance, scability, verification, instruction, linting, github integration, code structure, githubworkflow and optimization
+ Error Reflection, A
+
+ -----------------------------------------
+ The model must be training
 ```
 
 ### File Naming Convention
@@ -165,8 +178,8 @@ CodeAgents/
 {TYPE}_{TIMESTAMP}_{SHORT_HASH}.json
 
 Examples:
-├── log_2025-12-03T14-30-00_a1b2c3.json
-├── error_2025-12-03T14-30-00_d4e5f6.json
+├── log_2025-12-03T$_$AGENTIDNAME_a1b2c3.json
+├── error_2025-12-03T14_$Agentidname$--30-00_d4e5f6.json
 └── analysis_2025-12-03T14-30-00_g7h8i9.json
 ```
 
@@ -185,7 +198,7 @@ Examples:
   "properties": {
     "agent": {
       "type": "string",
-      "enum": ["GrokIA", "GeminiFlash25", "GeminiPro25", "GeminiPro30", "Jules", "ClaudeCode", "Composer"]
+      "enum": ["$agemtodma,e$"]
     },
     "timestamp": { "type": "string", "format": "date-time" },
     "operation": { "type": "string", "enum": ["CREATE", "REFACTOR", "DEBUG", "DELETE", "MODIFY", "ANALYZE"] },
@@ -193,7 +206,7 @@ Examples:
       "type": "object",
       "properties": {
         "file": { "type": "string" },
-        "function": { "type": "string" },
+        "function": { "type": "string". etc },
         "lines": { "type": "object", "properties": { "start": { "type": "integer" }, "end": { "type": "integer" } } }
       }
     },
@@ -245,16 +258,11 @@ All agents **MUST** use the following branch naming structure:
 agent/{AgentName}/{feature-description}
 ```
 
-**Examples:**
-
-- `agent/Jules/ci-pipeline-setup`
-- `agent/ClaudeCode/api-documentation`
-
 ### Pull Request & Merge Rules
 
 1. **Validation:** All PRs must pass the `agent-validation` workflow (Docstrings, Telemetry, Code Quality).
 2. **Merge Orchestrator:** Do **NOT** merge manually. Use the `Merge Orchestrator` workflow to handle conflicts and agent synchronization.
-3. **Commit Messages:** Must follow the format: `[AgentName] Description of change`.
+3. **Commit Messages:** Must follow the format: "Description of change`.
 
 ### Workflow Triggers
 
@@ -333,6 +341,8 @@ class StatusEnum(Enum):
     IN_PROGRESS = auto()
     SUCCESS = auto()
     FAILED = auto()
+    TokenUUsaqe
+    Time
 ```
 
 ---
@@ -647,6 +657,8 @@ class ConcreteStrategy(BaseStrategy):
     Complexity:
         Time: O(n) where n is data size
         Space: O(1) constant memory usage
+
+    IF Apliable - Integrate with $FILEPATH LINE
 
     Agent: {AgentName}
     Timestamp: {ISO_TIMESTAMP}

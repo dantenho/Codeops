@@ -18,7 +18,10 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional, Sequence
 
-from chromadb.api.types import Collection
+try:  # Older chromadb builds may not expose typing helpers.
+    from chromadb.api.types import Collection
+except Exception:  # pragma: no cover
+    Collection = Any  # type: ignore
 
 from .client import ChromaDatabase
 

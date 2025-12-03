@@ -1,0 +1,431 @@
+# Error Pattern Database
+# Common error patterns with diagnosis and recovery strategies
+
+version: "1.0.0"
+last_updated: "2025-12-03"
+
+# === PYTHON ERROR PATTERNS ===
+
+python_errors:
+  # Import/Module Errors
+  - error_type: ModuleNotFoundError
+    category: import
+    severity: high
+    pattern: "No module named '(.+)'"
+    diagnosis: "Required Python package is not installed or not in PYTHONPATH"
+
+    recovery_strategies:
+      - id: install_package
+        name: "Install Missing Package"
+        automated: true
+        success_rate: 0.95
+        steps:
+          - "Extract package name from error message"
+          - "Run: pip install {package}"
+          - "Verify installation with: pip show {package}"
+          - "Retry import"
+
+      - id: check_virtualenv
+        name: "Verify Virtual Environment"
+        automated: false
+        success_rate: 0.80
+        steps:
+          - "Check current Python: which python"
+          - "Verify virtualenv is activated"
+          - "Activate correct environment: source venv/bin/activate"
+          - "Reinstall requirements: pip install -r requirements.txt"
+
+  - error_type: ImportError
+    category: import
+    severity: high
+    pattern: "cannot import name '(.+)' from '(.+)'"
+    diagnosis: "Symbol not found in module - version mismatch or typo"
+
+    recovery_strategies:
+      - id: check_package_version
+        name: "Verify Package Version"
+        automated: true
+        success_rate: 0.85
+        steps:
+          - "Check installed version: pip show {package}"
+          - "Compare with requirements"
+          - "Upgrade if needed: pip install --upgrade {package}"
+
+      - id: verify_import_name
+        name: "Check Import Name"
+        automated: false
+        success_rate: 0.70
+        steps:
+          - "Check package documentation"
+          - "Verify symbol exists in current version"
+          - "Check for renamed imports in changelog"
+
+  # Type Errors
+  - error_type: TypeError
+    category: type
+    severity: medium
+    pattern: "(.+) object .+ (?:not|is)"
+    diagnosis: "Type mismatch - wrong type used in operation"
+
+    recovery_strategies:
+      - id: add_type_conversion
+        name: "Add Type Conversion"
+        automated: false
+        success_rate: 0.75
+        steps:
+          - "Identify expected type from error"
+          - "Add type conversion: int(), str(), list(), etc."
+          - "Add type validation before operation"
+
+      - id: add_type_hints
+        name: "Add Type Hints"
+        automated: false
+        success_rate: 0.60
+        steps:
+          - "Add type hints to function signature"
+          - "Use mypy for static type checking"
+          - "Fix type mismatches found by mypy"
+
+  # Attribute Errors
+  - error_type: AttributeError
+    category: attribute
+    severity: medium
+    pattern: "'(.+)' object has no attribute '(.+)'"
+    diagnosis: "Accessing non-existent attribute or None object"
+
+    recovery_strategies:
+      - id: add_none_check
+        name: "Add None Check"
+        automated: false
+        success_rate: 0.85
+        steps:
+          - "Add: if obj is not None:"
+          - "Use getattr(obj, 'attr', default)"
+          - "Consider optional chaining"
+
+      - id: verify_attribute
+        name: "Verify Attribute Exists"
+        automated: false
+        success_rate: 0.70
+        steps:
+          - "Check object type: type(obj)"
+          - "List attributes: dir(obj)"
+          - "Fix attribute name typo"
+
+  # File Errors
+  - error_type: FileNotFoundError
+    category: resource
+    severity: medium
+    pattern: "No such file or directory: '(.+)'"
+    diagnosis: "File does not exist at specified path"
+
+    recovery_strategies:
+      - id: verify_path
+        name: "Verify File Path"
+        automated: true
+        success_rate: 0.80
+        steps:
+          - "Check if path is correct"
+          - "Verify working directory: os.getcwd()"
+          - "Use absolute path if needed"
+          - "Check file permissions"
+
+      - id: create_default_file
+        name: "Create Default File"
+        automated: false
+        success_rate: 0.60
+        steps:
+          - "Determine if file should exist"
+          - "Create with default content"
+          - "Update code to handle missing files"
+
+  # Permission Errors
+  - error_type: PermissionError
+    category: permission
+    severity: high
+    pattern: "Permission denied: '(.+)'"
+    diagnosis: "Insufficient permissions to access resource"
+
+    recovery_strategies:
+      - id: check_permissions
+        name: "Check File Permissions"
+        automated: true
+        success_rate: 0.70
+        steps:
+          - "Check permissions: ls -la {file}"
+          - "Verify user ownership"
+          - "Update permissions if safe: chmod"
+
+      - id: run_as_admin
+        name: "Run with Elevated Permissions"
+        automated: false
+        success_rate: 0.50
+        steps:
+          - "Consider if elevated permissions needed"
+          - "Run with sudo (Linux/Mac)"
+          - "Run as administrator (Windows)"
+
+  # Network Errors
+  - error_type: ConnectionError
+    category: network
+    severity: high
+    pattern: "(.+)"
+    diagnosis: "Network connection failed"
+
+    recovery_strategies:
+      - id: retry_with_backoff
+        name: "Retry with Exponential Backoff"
+        automated: true
+        success_rate: 0.75
+        steps:
+          - "Wait 1 second"
+          - "Retry connection"
+          - "Double wait time on each failure"
+          - "Max 5 attempts"
+
+      - id: check_network_config
+        name: "Verify Network Configuration"
+        automated: false
+        success_rate: 0.60
+        steps:
+          - "Test network: ping google.com"
+          - "Check firewall settings"
+          - "Verify URL/endpoint is correct"
+          - "Check proxy configuration"
+
+  - error_type: TimeoutError
+    category: timeout
+    severity: medium
+    pattern: "(.+)"
+    diagnosis: "Operation exceeded time limit"
+
+    recovery_strategies:
+      - id: increase_timeout
+        name: "Increase Timeout Duration"
+        automated: true
+        success_rate: 0.70
+        steps:
+          - "Double current timeout value"
+          - "Add timeout parameter if missing"
+          - "Consider if operation is too slow"
+
+      - id: optimize_operation
+        name: "Optimize Slow Operation"
+        automated: false
+        success_rate: 0.65
+        steps:
+          - "Profile operation to find bottleneck"
+          - "Add caching if applicable"
+          - "Use pagination for large data"
+          - "Consider async/parallel processing"
+
+  # Data Access Errors
+  - error_type: KeyError
+    category: key
+    severity: medium
+    pattern: "'(.+)'"
+    diagnosis: "Dictionary key does not exist"
+
+    recovery_strategies:
+      - id: use_dict_get
+        name: "Use dict.get() Method"
+        automated: false
+        success_rate: 0.90
+        steps:
+          - "Replace: dict[key]"
+          - "With: dict.get(key, default_value)"
+          - "Prevents KeyError exceptions"
+
+      - id: check_key_exists
+        name: "Check Key Before Access"
+        automated: false
+        success_rate: 0.85
+        steps:
+          - "Add: if key in dict:"
+          - "Handle missing key case"
+          - "Log warning for unexpected missing keys"
+
+  - error_type: IndexError
+    category: index
+    severity: medium
+    pattern: "list index out of range"
+    diagnosis: "List index exceeds list length"
+
+    recovery_strategies:
+      - id: check_list_length
+        name: "Validate Index"
+        automated: false
+        success_rate: 0.85
+        steps:
+          - "Check: if len(list) > index:"
+          - "Verify list is not empty"
+          - "Use try/except for robust handling"
+
+  - error_type: ValueError
+    category: value
+    severity: medium
+    pattern: "(.+)"
+    diagnosis: "Invalid value provided"
+
+    recovery_strategies:
+      - id: validate_input
+        name: "Add Input Validation"
+        automated: false
+        success_rate: 0.80
+        steps:
+          - "Validate value before operation"
+          - "Check value range/format"
+          - "Provide clear error messages"
+          - "Use type hints to prevent issues"
+
+# === JAVASCRIPT/TYPESCRIPT ERRORS ===
+
+javascript_errors:
+  - error_type: ReferenceError
+    category: syntax
+    severity: high
+    pattern: "(.+) is not defined"
+    diagnosis: "Variable used before declaration"
+
+    recovery_strategies:
+      - id: declare_variable
+        name: "Declare Variable"
+        automated: false
+        success_rate: 0.90
+        steps:
+          - "Add variable declaration: let/const/var"
+          - "Check for typos in variable name"
+          - "Import module if from external package"
+
+  - error_type: TypeError
+    category: type
+    severity: medium
+    pattern: "Cannot read property '(.+)' of (null|undefined)"
+    diagnosis: "Accessing property on null/undefined"
+
+    recovery_strategies:
+      - id: add_null_check
+        name: "Add Null/Undefined Check"
+        automated: false
+        success_rate: 0.85
+        steps:
+          - "Add: if (obj != null)"
+          - "Use optional chaining: obj?.property"
+          - "Use nullish coalescing: obj ?? default"
+
+# === RUST ERRORS ===
+
+rust_errors:
+  - error_type: "borrow checker error"
+    category: logic
+    severity: high
+    pattern: "cannot borrow .+ as mutable"
+    diagnosis: "Violating Rust's borrowing rules"
+
+    recovery_strategies:
+      - id: fix_borrow
+        name: "Fix Borrow Violation"
+        automated: false
+        success_rate: 0.75
+        steps:
+          - "Reduce scope of mutable borrow"
+          - "Clone data if multiple ownership needed"
+          - "Use RefCell for interior mutability"
+
+# === ERROR LEARNING CONFIGURATION ===
+
+learning:
+  # Track error patterns
+  track_patterns: true
+
+  # Create training materials from errors
+  create_training_materials: true
+  min_occurrences_for_training: 2
+
+  # Update success rates
+  update_success_rates: true
+
+  # Store in memory service
+  store_in_memory: true
+  memory_topic_prefix: "error"
+
+# === SELF-HEALING CONFIGURATION ===
+
+self_healing:
+  # Enable automated healing
+  enabled: true
+
+  # Strategies that can run without confirmation
+  auto_heal_strategies:
+    - install_package
+    - retry_with_backoff
+    - verify_path
+    - increase_timeout
+
+  # Require confirmation for these
+  require_confirmation:
+    - run_as_admin
+    - create_default_file
+    - modify_permissions
+
+  # Retry configuration
+  max_retry_attempts: 3
+  retry_backoff_base: 1.0  # seconds
+  retry_backoff_multiplier: 2.0
+
+  # Circuit breaker
+  circuit_breaker:
+    enabled: true
+    failure_threshold: 5
+    timeout_seconds: 60
+
+# === PREVENTION RULES ===
+
+prevention:
+  # Static analysis rules to prevent common errors
+  rules:
+    - id: require_none_checks
+      description: "Require None checks before attribute access"
+      pattern: "\.(?!__)"
+      severity: medium
+
+    - id: require_bounds_checks
+      description: "Require bounds checking for list access"
+      pattern: "\[.+\]"
+      severity: medium
+
+    - id: prefer_dict_get
+      description: "Prefer dict.get() over direct access"
+      pattern: "dict\[.+\]"
+      severity: low
+
+    - id: require_error_handling
+      description: "Require try/except for risky operations"
+      pattern: "open\(|request\.|connect\("
+      severity: high
+
+# === MONITORING ===
+
+monitoring:
+  # Track error metrics
+  track_metrics: true
+
+  # Metrics to collect
+  metrics:
+    - error_count
+    - error_category_distribution
+    - error_severity_distribution
+    - healing_success_rate
+    - mean_time_to_recovery
+    - repeat_error_rate
+
+  # Alerting
+  alerts:
+    - condition: "critical_errors > 5"
+      action: notify_admin
+
+    - condition: "healing_success_rate < 0.50"
+      action: review_strategies
+
+    - condition: "repeat_error_rate > 0.30"
+      action: investigate_root_cause

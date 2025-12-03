@@ -13,6 +13,16 @@ from datetime import datetime, timezone
 from typing import Dict, List, Optional
 from pydantic import BaseModel, Field, computed_field
 
+LEVEL_THRESHOLDS: Dict[int, int] = {
+    1: 0,
+    2: 500,
+    3: 1500,
+    4: 4000,
+    5: 10000,
+    6: 25000,
+    7: 50000,
+}
+
 
 class SkillLevel(BaseModel):
     """Proficiency in a specific skill or language."""
@@ -134,11 +144,7 @@ class AgentProgress(BaseModel):
 
     def _check_level_up(self) -> bool:
         """Check and apply level up if qualified."""
-        level_thresholds = {
-            1: 0, 2: 500, 3: 1500, 4: 4000,
-            5: 10000, 6: 25000, 7: 50000
-        }
-        for level, threshold in sorted(level_thresholds.items(), reverse=True):
+        for level, threshold in sorted(LEVEL_THRESHOLDS.items(), reverse=True):
             if self.xp.total >= threshold and level > self.current_level:
                 self.current_level = level
                 return True

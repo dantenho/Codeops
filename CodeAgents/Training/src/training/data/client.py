@@ -15,10 +15,14 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Optional
+from typing import Any, Optional
 
 import chromadb
-from chromadb.api.types import Collection
+
+try:  # Fallback for older chromadb distributions.
+    from chromadb.api.types import Collection
+except Exception:  # pragma: no cover
+    Collection = Any  # type: ignore
 
 
 DEFAULT_DB_PATH = Path("chroma_db")

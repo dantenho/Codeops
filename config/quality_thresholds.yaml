@@ -1,0 +1,336 @@
+# Quality Gate Thresholds Configuration
+# Defines quality standards for different stages of development
+
+version: "1.0.0"
+last_updated: "2025-12-03"
+
+# === PREDEFINED QUALITY GATES ===
+
+quality_gates:
+  # Basic quality standards for development
+  basic:
+    description: "Basic quality standards for development work"
+    strict_mode: false
+    block_on_failure: false
+    thresholds:
+      overall_score: 60.0
+      complexity_score: 60.0
+      type_coverage: 40.0
+      docstring_coverage: 50.0
+      test_coverage: 50.0
+      maintainability_index: 40.0
+      max_complexity: 20
+      critical_security_issues: 0
+      high_security_issues: 1
+
+  # Minimum standards for committing code
+  commit:
+    description: "Minimum standards for committing code to version control"
+    strict_mode: false
+    block_on_failure: true
+    thresholds:
+      overall_score: 70.0
+      complexity_score: 75.0
+      type_coverage: 60.0
+      docstring_coverage: 70.0
+      test_coverage: 80.0
+      maintainability_index: 50.0
+      max_complexity: 15
+      critical_security_issues: 0
+      high_security_issues: 0
+
+  # Standards for pull request approval
+  pull_request:
+    description: "Standards for pull request approval and code review"
+    strict_mode: true
+    block_on_failure: true
+    thresholds:
+      overall_score: 85.0
+      complexity_score: 80.0
+      type_coverage: 70.0
+      docstring_coverage: 90.0
+      test_coverage: 90.0
+      maintainability_index: 60.0
+      max_complexity: 12
+      critical_security_issues: 0
+      high_security_issues: 0
+
+  # High standards for production deployment
+  production:
+    description: "High standards for production deployment"
+    strict_mode: true
+    block_on_failure: true
+    thresholds:
+      overall_score: 95.0
+      complexity_score: 85.0
+      type_coverage: 80.0
+      docstring_coverage: 95.0
+      test_coverage: 95.0
+      maintainability_index: 70.0
+      max_complexity: 10
+      critical_security_issues: 0
+      high_security_issues: 0
+
+  # === CUSTOM GATES FOR SPECIFIC SCENARIOS ===
+
+  # API endpoint quality
+  api_endpoint:
+    description: "Quality standards for API endpoints"
+    strict_mode: true
+    block_on_failure: true
+    thresholds:
+      overall_score: 85.0
+      complexity_score: 80.0
+      type_coverage: 80.0  # APIs need strong typing
+      docstring_coverage: 95.0  # APIs need excellent docs
+      test_coverage: 90.0  # APIs need comprehensive tests
+      maintainability_index: 65.0
+      max_complexity: 12
+      critical_security_issues: 0  # No security issues allowed
+      high_security_issues: 0
+
+  # Database model quality
+  database_model:
+    description: "Quality standards for database models and migrations"
+    strict_mode: true
+    block_on_failure: true
+    thresholds:
+      overall_score: 90.0
+      complexity_score: 80.0
+      type_coverage: 85.0  # Strong typing for data models
+      docstring_coverage: 90.0
+      test_coverage: 85.0
+      maintainability_index: 65.0
+      max_complexity: 10
+      critical_security_issues: 0
+      high_security_issues: 0
+
+  # Utility/helper function quality
+  utility:
+    description: "Quality standards for utility and helper functions"
+    strict_mode: false
+    block_on_failure: false
+    thresholds:
+      overall_score: 75.0
+      complexity_score: 75.0
+      type_coverage: 70.0
+      docstring_coverage: 80.0
+      test_coverage: 85.0  # Utilities should be well-tested
+      maintainability_index: 60.0
+      max_complexity: 12
+      critical_security_issues: 0
+      high_security_issues: 0
+
+  # Test code quality (yes, tests need quality too!)
+  test_code:
+    description: "Quality standards for test code"
+    strict_mode: false
+    block_on_failure: false
+    thresholds:
+      overall_score: 65.0
+      complexity_score: 70.0
+      type_coverage: 50.0  # Tests can be less strictly typed
+      docstring_coverage: 60.0  # Test names should be self-documenting
+      test_coverage: 0.0  # N/A for test code
+      maintainability_index: 55.0
+      max_complexity: 15  # Tests can be more complex
+      critical_security_issues: 0
+      high_security_issues: 0
+
+  # Quick prototype quality
+  prototype:
+    description: "Relaxed standards for quick prototypes and spikes"
+    strict_mode: false
+    block_on_failure: false
+    thresholds:
+      overall_score: 50.0
+      complexity_score: 50.0
+      type_coverage: 30.0
+      docstring_coverage: 40.0
+      test_coverage: 30.0
+      maintainability_index: 35.0
+      max_complexity: 25
+      critical_security_issues: 0  # Still no critical security issues
+      high_security_issues: 2
+
+# === GATE SELECTION RULES ===
+
+gate_selection:
+  # Automatically select gate based on file patterns
+  auto_select:
+    enabled: true
+    rules:
+      - pattern: "*/api/*"
+        gate: api_endpoint
+      - pattern: "*/models/*"
+        gate: database_model
+      - pattern: "*/utils/*"
+        gate: utility
+      - pattern: "*/test_*.py"
+        gate: test_code
+      - pattern: "*_test.py"
+        gate: test_code
+      - pattern: "*/prototype/*"
+        gate: prototype
+
+  # Default gate if no pattern matches
+  default_gate: commit
+
+# === GATE ENFORCEMENT ===
+
+enforcement:
+  # Pre-commit hook
+  pre_commit:
+    enabled: true
+    gate: commit
+    allow_override: false
+
+  # Pre-push hook
+  pre_push:
+    enabled: true
+    gate: pull_request
+    allow_override: true  # Can skip with --no-verify
+
+  # CI/CD pipeline
+  ci_cd:
+    enabled: true
+    gate: production
+    allow_override: false
+
+# === PROGRESSIVE ENFORCEMENT ===
+
+progressive_enforcement:
+  enabled: true
+
+  # Gradually increase standards over time
+  schedule:
+    - days: 0-30
+      gate: basic
+      description: "First month: Learn and adapt"
+
+    - days: 31-90
+      gate: commit
+      description: "Months 2-3: Establish good habits"
+
+    - days: 91+
+      gate: pull_request
+      description: "Month 4+: Professional standards"
+
+# === EXEMPTIONS ===
+
+exemptions:
+  # Files/patterns exempt from quality gates
+  paths:
+    - "*/migrations/*"  # Database migrations auto-generated
+    - "*/protobuf/*"  # Generated protocol buffer code
+    - "*/vendor/*"  # Third-party code
+    - "*/node_modules/*"
+    - "*/.venv/*"
+
+  # File types exempt
+  extensions:
+    - ".json"
+    - ".yaml"
+    - ".yml"
+    - ".md"
+    - ".txt"
+
+# === REPORTING ===
+
+reporting:
+  # Generate quality reports
+  enabled: true
+
+  # Report formats
+  formats:
+    - console  # Terminal output
+    - json  # JSON file
+    - html  # HTML report
+
+  # Save reports
+  save_reports: true
+  reports_dir: "./quality_reports"
+
+  # Report retention
+  retention_days: 90
+
+# === NOTIFICATIONS ===
+
+notifications:
+  # Notify on gate failures
+  on_failure:
+    enabled: true
+    channels:
+      - console
+      # - slack
+      # - email
+
+  # Notify on quality improvements
+  on_improvement:
+    enabled: true
+    threshold: 10.0  # Notify if score improves by 10+ points
+    channels:
+      - console
+
+# === METRICS TRACKING ===
+
+metrics:
+  # Track quality metrics over time
+  enabled: true
+
+  # Aggregation intervals
+  intervals:
+    - daily
+    - weekly
+    - monthly
+
+  # Metrics to track
+  track:
+    - overall_score
+    - complexity_score
+    - type_coverage
+    - docstring_coverage
+    - test_coverage
+    - security_issues
+    - gate_pass_rate
+
+# === CUSTOM SCORING WEIGHTS ===
+
+scoring_weights:
+  # Adjust these to emphasize different aspects
+  # Must sum to 1.0
+
+  complexity: 0.20
+  type_coverage: 0.15
+  docstring_coverage: 0.15
+  maintainability: 0.20
+  security: 0.20
+  performance: 0.10
+
+# === CONTINUOUS IMPROVEMENT ===
+
+continuous_improvement:
+  enabled: true
+
+  # Automatically suggest improvements
+  auto_suggest: true
+
+  # Create issues for quality problems
+  create_issues: false
+
+  # Badge generation
+  badges:
+    enabled: true
+    update_readme: false
+
+# === EMERGENCY CONTROLS ===
+
+emergency:
+  # Temporarily disable gates
+  disable_all_gates: false
+
+  # Bypass gate for critical hotfixes
+  allow_hotfix_bypass: true
+  hotfix_branches:
+    - "hotfix/*"
+    - "emergency/*"

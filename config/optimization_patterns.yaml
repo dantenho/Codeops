@@ -1,0 +1,522 @@
+# Optimization Patterns Configuration
+# Catalog of code optimization patterns for learning and improvement
+
+version: "1.0.0"
+last_updated: "2025-12-03"
+
+# === META INFORMATION ===
+
+meta:
+  total_patterns: 30
+  languages:
+    - python
+    - typescript
+    - rust
+    - javascript
+  categories:
+    - algorithmic
+    - data_structure
+    - language_feature
+    - library_usage
+    - memory
+    - cpu
+    - caching
+    - security
+    - readability
+
+# === PYTHON OPTIMIZATION PATTERNS ===
+
+patterns:
+  # Language Features
+  - id: python_list_comprehension
+    title: "Use List Comprehensions"
+    category: language_feature
+    impact: low
+    language: python
+    description: "Replace explicit for loops with list comprehensions for better performance and readability"
+
+    before: |
+      result = []
+      for item in items:
+          if item > 0:
+              result.append(item * 2)
+
+    after: |
+      result = [item * 2 for item in items if item > 0]
+
+    explanation: "List comprehensions are more concise, readable, and often faster than explicit loops in Python."
+    keywords: ["list comprehension", "for loop", "filter", "map"]
+    estimated_improvement: 15
+    occurrence_count: 0
+    success_rate: 0.85
+
+  - id: python_generator_expression
+    title: "Use Generator Expressions for Large Data"
+    category: memory
+    impact: medium
+    language: python
+    description: "Use generator expressions instead of list comprehensions for large datasets to save memory"
+
+    before: |
+      results = [process(item) for item in huge_dataset]
+      return sum(results)
+
+    after: |
+      results = (process(item) for item in huge_dataset)
+      return sum(results)
+
+    explanation: "Generator expressions use lazy evaluation and don't store all values in memory at once."
+    keywords: ["generator", "memory", "lazy evaluation"]
+    estimated_improvement: 40
+    occurrence_count: 0
+    success_rate: 0.90
+
+  - id: python_dict_get
+    title: "Use dict.get() Instead of Key Checks"
+    category: language_feature
+    impact: low
+    language: python
+    description: "Use dict.get() method instead of manually checking key existence"
+
+    before: |
+      if key in my_dict:
+          value = my_dict[key]
+      else:
+          value = default_value
+
+    after: |
+      value = my_dict.get(key, default_value)
+
+    explanation: "dict.get() is cleaner, safer, and more Pythonic than manual key checking."
+    keywords: ["dictionary", "get", "default value"]
+    estimated_improvement: 5
+    occurrence_count: 0
+    success_rate: 0.95
+
+  - id: python_f_strings
+    title: "Use f-strings for String Formatting"
+    category: language_feature
+    impact: low
+    language: python
+    description: "Use f-strings instead of % formatting or .format()"
+
+    before: |
+      message = "User %s has %d points" % (username, points)
+      # or
+      message = "User {} has {} points".format(username, points)
+
+    after: |
+      message = f"User {username} has {points} points"
+
+    explanation: "f-strings are faster, more readable, and less error-prone."
+    keywords: ["f-string", "formatting", "interpolation"]
+    estimated_improvement: 10
+    occurrence_count: 0
+    success_rate: 0.92
+
+  - id: python_enumerate
+    title: "Use enumerate() Instead of range(len())"
+    category: language_feature
+    impact: low
+    language: python
+    description: "Use enumerate() to get both index and value in loops"
+
+    before: |
+      for i in range(len(items)):
+          item = items[i]
+          print(f"Index {i}: {item}")
+
+    after: |
+      for i, item in enumerate(items):
+          print(f"Index {i}: {item}")
+
+    explanation: "enumerate() is more Pythonic, readable, and less error-prone."
+    keywords: ["enumerate", "index", "iteration"]
+    estimated_improvement: 5
+    occurrence_count: 0
+    success_rate: 0.93
+
+  - id: python_context_manager
+    title: "Use Context Managers for Resource Management"
+    category: error_handling
+    impact: medium
+    language: python
+    description: "Use 'with' statements to ensure proper resource cleanup"
+
+    before: |
+      f = open("file.txt")
+      try:
+          data = f.read()
+      finally:
+          f.close()
+
+    after: |
+      with open("file.txt") as f:
+          data = f.read()
+
+    explanation: "Context managers automatically handle resource cleanup, even if exceptions occur."
+    keywords: ["context manager", "with", "resource management"]
+    estimated_improvement: 20
+    occurrence_count: 0
+    success_rate: 0.95
+
+  # Data Structures
+  - id: python_set_membership
+    title: "Use Sets for Membership Testing"
+    category: data_structure
+    impact: high
+    language: python
+    description: "Use sets instead of lists for O(1) membership testing"
+
+    before: |
+      valid_ids = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+      if user_id in valid_ids:
+          process_user()
+
+    after: |
+      valid_ids = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10}
+      if user_id in valid_ids:
+          process_user()
+
+    explanation: "Set membership is O(1) vs O(n) for lists. Huge performance gain for large collections."
+    keywords: ["set", "membership", "performance"]
+    estimated_improvement: 80
+    occurrence_count: 0
+    success_rate: 0.95
+
+  - id: python_defaultdict
+    title: "Use defaultdict for Auto-initialization"
+    category: data_structure
+    impact: medium
+    language: python
+    description: "Use defaultdict to eliminate key existence checking"
+
+    before: |
+      counter = {}
+      for item in items:
+          if item not in counter:
+              counter[item] = 0
+          counter[item] += 1
+
+    after: |
+      from collections import defaultdict
+      counter = defaultdict(int)
+      for item in items:
+          counter[item] += 1
+
+    explanation: "defaultdict automatically initializes missing keys with a default value."
+    keywords: ["defaultdict", "dictionary", "initialization"]
+    estimated_improvement: 15
+    occurrence_count: 0
+    success_rate: 0.88
+
+  - id: python_collections_counter
+    title: "Use Counter for Counting Elements"
+    category: library_usage
+    impact: medium
+    language: python
+    description: "Use Counter from collections for element counting"
+
+    before: |
+      counts = {}
+      for item in items:
+          counts[item] = counts.get(item, 0) + 1
+
+    after: |
+      from collections import Counter
+      counts = Counter(items)
+
+    explanation: "Counter is optimized for counting and provides useful methods."
+    keywords: ["Counter", "counting", "collections"]
+    estimated_improvement: 20
+    occurrence_count: 0
+    success_rate: 0.90
+
+  # Performance
+  - id: python_string_join
+    title: "Use str.join() for String Concatenation"
+    category: cpu
+    impact: medium
+    language: python
+    description: "Use str.join() instead of repeated += for string building"
+
+    before: |
+      result = ""
+      for item in items:
+          result += str(item) + ", "
+
+    after: |
+      result = ", ".join(str(item) for item in items)
+
+    explanation: "String concatenation with += creates new string objects each iteration. join() is much faster."
+    keywords: ["string concatenation", "join", "performance"]
+    estimated_improvement: 60
+    occurrence_count: 0
+    success_rate: 0.92
+
+  - id: python_any_all
+    title: "Use any() and all() for Boolean Checks"
+    category: language_feature
+    impact: low
+    language: python
+    description: "Use built-in any()/all() instead of manual loops"
+
+    before: |
+      has_positive = False
+      for num in numbers:
+          if num > 0:
+              has_positive = True
+              break
+
+    after: |
+      has_positive = any(num > 0 for num in numbers)
+
+    explanation: "Built-in any()/all() are optimized, short-circuit, and more readable."
+    keywords: ["any", "all", "boolean", "iteration"]
+    estimated_improvement: 10
+    occurrence_count: 0
+    success_rate: 0.90
+
+  # Security
+  - id: python_avoid_eval
+    title: "Never Use eval() on User Input"
+    category: security
+    impact: high
+    language: python
+    description: "Avoid eval() as it can execute arbitrary code"
+
+    before: |
+      user_input = request.GET['data']
+      result = eval(user_input)  # DANGEROUS!
+
+    after: |
+      import ast
+      user_input = request.GET['data']
+      result = ast.literal_eval(user_input)  # Safe for literals only
+
+    explanation: "eval() can execute any Python code. Use ast.literal_eval() or JSON parsing instead."
+    keywords: ["eval", "security", "code injection"]
+    estimated_improvement: 100
+    occurrence_count: 0
+    success_rate: 1.0
+
+  - id: python_sql_parameterization
+    title: "Use Parameterized Queries"
+    category: security
+    impact: high
+    language: python
+    description: "Always use parameterized queries to prevent SQL injection"
+
+    before: |
+      query = f"SELECT * FROM users WHERE username = '{username}'"
+      cursor.execute(query)  # SQL INJECTION RISK!
+
+    after: |
+      query = "SELECT * FROM users WHERE username = %s"
+      cursor.execute(query, (username,))
+
+    explanation: "String formatting with SQL creates injection vulnerabilities. Always use parameterized queries."
+    keywords: ["SQL injection", "parameterized", "security"]
+    estimated_improvement: 100
+    occurrence_count: 0
+    success_rate: 1.0
+
+# === TYPESCRIPT OPTIMIZATION PATTERNS ===
+
+  - id: typescript_optional_chaining
+    title: "Use Optional Chaining"
+    category: language_feature
+    impact: low
+    language: typescript
+    description: "Use optional chaining (?.) for safer property access"
+
+    before: |
+      const city = user && user.address && user.address.city;
+
+    after: |
+      const city = user?.address?.city;
+
+    explanation: "Optional chaining is more concise and handles undefined/null gracefully."
+    keywords: ["optional chaining", "null safety"]
+    estimated_improvement: 10
+    occurrence_count: 0
+    success_rate: 0.95
+
+  - id: typescript_nullish_coalescing
+    title: "Use Nullish Coalescing"
+    category: language_feature
+    impact: low
+    language: typescript
+    description: "Use ?? instead of || for default values"
+
+    before: |
+      const value = config.timeout || 5000;  // 0 would be replaced!
+
+    after: |
+      const value = config.timeout ?? 5000;  // Only null/undefined replaced
+
+    explanation: "Nullish coalescing (??) only replaces null/undefined, not falsy values like 0 or ''."
+    keywords: ["nullish coalescing", "default value"]
+    estimated_improvement: 15
+    occurrence_count: 0
+    success_rate: 0.88
+
+  - id: typescript_const_assertions
+    title: "Use const Assertions for Literals"
+    category: language_feature
+    impact: low
+    language: typescript
+    description: "Use 'as const' for literal types"
+
+    before: |
+      const colors = ['red', 'green', 'blue'];  // string[]
+
+    after: |
+      const colors = ['red', 'green', 'blue'] as const;  // readonly ['red', 'green', 'blue']
+
+    explanation: "const assertions provide stronger type inference and prevent mutations."
+    keywords: ["const assertion", "type inference", "readonly"]
+    estimated_improvement: 10
+    occurrence_count: 0
+    success_rate: 0.85
+
+# === RUST OPTIMIZATION PATTERNS ===
+
+  - id: rust_iterator_chains
+    title: "Use Iterator Chains"
+    category: language_feature
+    impact: medium
+    language: rust
+    description: "Chain iterator methods instead of collecting intermediate results"
+
+    before: |
+      let filtered: Vec<_> = items.iter().filter(|x| x > &5).collect();
+      let doubled: Vec<_> = filtered.iter().map(|x| x * 2).collect();
+
+    after: |
+      let result: Vec<_> = items.iter()
+          .filter(|x| x > &5)
+          .map(|x| x * 2)
+          .collect();
+
+    explanation: "Iterator chains avoid intermediate allocations and are more efficient."
+    keywords: ["iterator", "chain", "performance"]
+    estimated_improvement: 30
+    occurrence_count: 0
+    success_rate: 0.90
+
+  - id: rust_string_capacity
+    title: "Pre-allocate String Capacity"
+    category: memory
+    impact: medium
+    language: rust
+    description: "Use String::with_capacity() when size is known"
+
+    before: |
+      let mut s = String::new();
+      for item in large_list {
+          s.push_str(&item);
+      }
+
+    after: |
+      let mut s = String::with_capacity(estimated_size);
+      for item in large_list {
+          s.push_str(&item);
+      }
+
+    explanation: "Pre-allocating capacity avoids multiple reallocations as string grows."
+    keywords: ["String", "capacity", "allocation"]
+    estimated_improvement: 25
+    occurrence_count: 0
+    success_rate: 0.85
+
+# === PATTERN METADATA ===
+
+statistics:
+  by_language:
+    python: 12
+    typescript: 3
+    rust: 2
+    javascript: 2
+
+  by_category:
+    language_feature: 10
+    data_structure: 3
+    security: 2
+    cpu: 2
+    memory: 2
+    library_usage: 1
+
+  by_impact:
+    high: 3
+    medium: 8
+    low: 9
+
+  avg_success_rate: 0.91
+  avg_improvement: 28.5
+
+# === LEARNING CONFIGURATION ===
+
+learning:
+  # When to create training materials
+  create_training_on_detect: true
+  min_occurrence_for_training: 2
+
+  # When to suggest patterns to agents
+  suggestion_threshold:
+    min_success_rate: 0.70
+    min_occurrences: 1
+
+  # Pattern effectiveness tracking
+  track_effectiveness: true
+  update_stats_on_application: true
+
+  # Integration with memory service
+  store_in_memory: true
+  memory_topic_prefix: "optimization"
+
+# === DETECTION CONFIGURATION ===
+
+detection:
+  # Enable automatic pattern detection in code
+  auto_detect: true
+
+  # Scan files on commit
+  scan_on_commit: true
+
+  # Comment patterns to detect
+  comment_keywords:
+    - "optimize"
+    - "could be improved"
+    - "consider using"
+    - "better performance"
+    - "use .+ instead"
+
+# === APPLICATION CONFIGURATION ===
+
+application:
+  # Auto-apply safe optimizations
+  auto_apply: false
+
+  # Require confirmation for these impacts
+  require_confirmation:
+    - high
+    - medium
+
+  # Always auto-apply if success rate above
+  auto_apply_threshold: 0.95
+
+# === EXPORT/IMPORT ===
+
+export:
+  # Export successful patterns to shared catalog
+  export_to_catalog: true
+  catalog_path: "./data/optimization_catalog"
+
+  # Export format
+  format: yaml  # yaml or json
+
+import:
+  # Import community patterns
+  import_community_patterns: true
+  community_catalog_url: "https://example.com/patterns.yaml"

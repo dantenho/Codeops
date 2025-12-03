@@ -9,20 +9,27 @@ Timestamp: 2025-12-03T10:00:00Z
 
 from __future__ import annotations
 
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from typing import Optional
-import typer
-from rich.console import Console
-from rich.table import Table
-from rich.progress import Progress, SpinnerColumn, TextColumn
+from typing import Any, Dict, List, Optional
 import json
-import time
 import random
+import time
+import uuid
 
-from .services.training_manager import TrainingManager
-from .services.reflex_service import ReflexService
-from .services.memory_service import MemoryService
+import typer
+import yaml
+from rich.console import Console
+from rich.progress import Progress, SpinnerColumn, TextColumn
+from rich.table import Table
+
+from .models.activity import ActivityResult, ActivityType
 from .models.session import SessionType
+from .models.token_metrics import TokenBudget
+from .services.memory_service import MemoryService
+from .services.reflex_service import ReflexService
+from .services.token_tracker import TokenTracker
+from .services.training_manager import TrainingManager
 
 app = typer.Typer(
     name="training",
@@ -31,10 +38,28 @@ app = typer.Typer(
 )
 console = Console()
 
+TRAINING_ROOT = Path(__file__).parent.parent.parent
+PROJECT_ROOT = TRAINING_ROOT.parent.parent
+FLASHCARD_DECKS_DIR = TRAINING_ROOT / "Flashcards" / "decks"
+
+token_tracker = TokenTracker(PROJECT_ROOT / "token_metrics")
+
 # Initialize services
-training_manager = TrainingManager(Path(__file__).parent.parent.parent)
-reflex_service = ReflexService(Path(__file__).parent.parent.parent)
+training_manager = TrainingManager(TRAINING_ROOT)
+reflex_service = ReflexService(TRAINING_ROOT)
 memory_service = MemoryService()
+
+
+def _load_token_budget_config() -> Dict[str, Any]:
+    config_path = PROJECT_ROOT / "config" / "token_budgets.yaml"
+    if not config_path.exists():
+        return {}
+
+    with open(config_path, "r", encoding="utf-8") as handle:
+        return yaml.safe_load(handle) or {}
+
+
+TOKEN_BUDGET_CONFIG = _load_token_budget_config()
 
 
 @app.command()
@@ -43,8 +68,18 @@ def init(
     force: bool = typer.Option(False, "--force", "-f", help="Overwrite existing profile"),
 ) -> None:
     """Initialize a new agent profile."""
-    console.print(f"[green]Initializing agent: {agent}[/green]")
-    # TODO: Implement initialization
+    existing = training_manager.get_progress(agent)
+    if existing and not force:
+        console.print(
+            "[yellow]⚠ Agent already initialized. Use --force to recreate the profile.[/yellow]"
+        )
+        raise typer.Exit(0)
+
+    if existing and force:
+        training_manager.progress_repo.delete(agent)  # type: ignore[attr-defined]
+
+    progress = training_manager.initialize_agent(agent)
+    console.print(f"[green]✅ Initialized profile for {agent} (level {progress.current_level})[/green]")
 
 
 @app.command()
@@ -61,10 +96,60 @@ def start(
             console.print("[red]Error: --topic is required for solo sessions.[/red]")
             raise typer.Exit(1)
 
-        _run_training_session(agent, topic)
+        result = _run_training_session(agent, topic)
+        console.print(
+            f"[green]Solo session complete. Score={result['score']:.2f} | File Reads={result['files_processed']}[/green]"
+        )
+        return
+
+    try:
+        session_enum = SessionType(session_type)
+    except ValueError:
+        console.print(f"[red]Unknown session type: {session_type}[/red]")
+        raise typer.Exit(1)
+
+    session = training_manager.start_session(agent, session_enum)
+
+    table = Table(title=f"{session_enum.value.replace('_', ' ').title()} Activities")
+    table.add_column("ID", style="cyan")
+    table.add_column("Title")
+    table.add_column("Type")
+    table.add_column("XP", justify="right")
+    table.add_column("Difficulty", justify="right")
+
+    for activity in session.activities:
+        table.add_row(
+            activity.activity_id.split("-")[0],
+            activity.title,
+            activity.activity_type.value,
+            str(activity.xp_reward),
+            str(activity.difficulty),
+        )
+
+    if session.activities:
+        console.print(table)
     else:
-        # TODO: Implement other session types
-        console.print(f"[yellow]Session type {session_type} not yet implemented[/yellow]")
+        console.print("[yellow]No activities generated for this session yet.[/yellow]")
+
+    warnings = _complete_structured_session(agent, session)
+    progress = training_manager.update_progress_after_session(agent, session)
+
+    summary = token_tracker.get_session_summary(session.session_id)
+    console.print(
+        f"[green]✅ Session complete. XP earned: {session.total_xp_earned}, "
+        f"Level: {progress.current_level}, Avg quality: {summary.average_quality_score:.1f}[/green]"
+    )
+
+    if warnings:
+        console.print("[yellow]Token Budget Warnings:[/yellow]")
+        for warning in warnings:
+            console.print(f"  • {warning}")
+
+    suggestions = token_tracker.analyze_optimization_opportunities(session.session_id)
+    if suggestions:
+        console.print("\n[blue]Optimization Suggestions[/blue]")
+        for suggestion in suggestions:
+            console.print(f"  • ({suggestion.priority}) {suggestion.description}")
 
 
 @app.command("threndia-sync")
@@ -111,8 +196,14 @@ def market_analysis(
     except Exception as exc:
         console.print(f"[red]Market analysis session failed: {exc}[/red]")
 
-def _run_training_session(agent: str, topic: str, fatigue_level: float = 0.0) -> float:
+def _run_training_session(
+    agent: str,
+    topic: str,
+    fatigue_level: float = 0.0,
+    session_id: Optional[str] = None,
+) -> Dict[str, Any]:
     """Runs a single training session and returns the score."""
+    session_identifier = session_id or f"solo-{agent}-{uuid.uuid4().hex[:8]}"
     if topic == "dsa":
         dsa_dirs = [
             "Level_02_Intermediate/07_data_structures",
@@ -156,7 +247,20 @@ def _run_training_session(agent: str, topic: str, fatigue_level: float = 0.0) ->
             memory_service.add_score(topic, score, time_taken, agent_id=agent, metrics=metrics)
             memory_service.log_daily_activity(agent, "training_session", {"topic": topic, "score": score, "status": "success"})
 
-            return score
+            summary = _record_simulation_tokens(
+                session_identifier,
+                agent,
+                files_processed=files_processed,
+                fatigue_level=fatigue_level,
+                score=score,
+            )
+
+            return {
+                "score": score,
+                "files_processed": files_processed,
+                "session_id": session_identifier,
+                "token_summary": summary.model_dump() if summary else None,
+            }
 
         except Exception as e:
             end_time = time.time()
@@ -164,10 +268,15 @@ def _run_training_session(agent: str, topic: str, fatigue_level: float = 0.0) ->
             memory_service.add_error(str(e), f"Error during solo training on {topic}", agent_id=agent)
             memory_service.log_daily_activity(agent, "training_error", {"topic": topic, "error": str(e)})
             console.print(f"[red]Error during training: {e}[/red]")
-            return 0.0
+            return {
+                "score": 0.0,
+                "files_processed": files_processed,
+                "session_id": session_identifier,
+                "token_summary": None,
+            }
     else:
         console.print(f"[red]Error: Unknown topic {topic}[/red]")
-        return 0.0
+        return {"score": 0.0, "files_processed": 0, "session_id": session_identifier, "token_summary": None}
 
 @app.command()
 def simulate(
@@ -178,8 +287,9 @@ def simulate(
     """Simulate training over time until performance degrades."""
     console.print(f"[bold blue]🚀 Starting Simulation for {agent} on {topic}[/bold blue]")
 
-    scores = []
+    scores: List[float] = []
     fatigue = 0.0
+    session_results: List[Dict[str, Any]] = []
 
     with Progress(
         SpinnerColumn(),
@@ -191,8 +301,10 @@ def simulate(
         for i in range(iterations):
             progress.update(task, description=f"Session {i+1}/{iterations} (Fatigue: {fatigue:.2f})")
 
-            score = _run_training_session(agent, topic, fatigue_level=fatigue)
-            scores.append(score)
+            session_id = f"sim-{agent}-{i}"
+            result = _run_training_session(agent, topic, fatigue_level=fatigue, session_id=session_id)
+            scores.append(result["score"])
+            session_results.append(result)
 
             # Increase fatigue
             fatigue += 0.1
@@ -220,6 +332,22 @@ def simulate(
         table.add_row(str(i+1), f"[{color}]{score:.2f}[/{color}]", f"{i * 0.1:.2f}")
 
     console.print(table)
+
+    total_tokens = sum(
+        summary["total_tokens"]
+        for summary in (r["token_summary"] for r in session_results)
+        if summary
+    )
+    console.print(f"\n[blue]Total Tokens Consumed:[/blue] {int(total_tokens)}")
+
+    recent_suggestions = []
+    for result in session_results[-3:]:
+        recent_suggestions.extend(token_tracker.analyze_optimization_opportunities(result["session_id"]))
+
+    if recent_suggestions:
+        console.print("\n[magenta]Recent Optimization Opportunities[/magenta]")
+        for suggestion in recent_suggestions[:5]:
+            console.print(f"  • {suggestion.description} (est. save {suggestion.estimated_tokens_saved} tokens)")
 
     if scores[-1] < scores[0]:
         console.print(f"\n[red]📉 Performance degraded by {scores[0] - scores[-1]:.2f} points due to fatigue.[/red]")
@@ -249,7 +377,29 @@ def progress(
     detailed: bool = typer.Option(False, "--detailed", "-d", help="Show detailed stats"),
 ) -> None:
     """View agent progress."""
-    # TODO: Implement progress display
+    progress = training_manager.get_progress(agent)
+    if not progress:
+        console.print("[red]No progress found. Initialize the agent first with `training init`.[/red]")
+        raise typer.Exit(1)
+
+    stats = token_tracker.get_agent_stats(agent)
+
+    table = Table(title=f"{agent} Progress Overview")
+    table.add_column("Metric", style="cyan")
+    table.add_column("Value", style="magenta")
+    table.add_row("Level", str(progress.current_level))
+    table.add_row("Total XP", str(progress.xp.total))
+    table.add_row("Daily Streak", str(progress.daily_streak.current))
+    table.add_row("Sessions Completed", str(progress.completions.sessions_completed))
+    if progress.last_activity:
+        table.add_row("Last Activity", progress.last_activity.isoformat())
+    table.add_row("Avg Tokens/Session", f"{stats.avg_tokens_per_session:.0f}")
+    table.add_row("Avg Quality Score", f"{stats.avg_quality_score:.1f}")
+    console.print(table)
+
+    if detailed:
+        _print_xp_breakdown(progress)
+        _print_badges(progress)
 
 
 @app.command()
@@ -257,16 +407,61 @@ def recommend(
     agent: str = typer.Argument(..., help="Agent ID"),
 ) -> None:
     """Get next session recommendation."""
-    # TODO: Implement recommendation
+    recommendation = _build_recommendation(agent)
+    if not recommendation:
+        console.print("[red]No profile found. Initialize the agent first.[/red]")
+        raise typer.Exit(1)
+
+    console.print(f"[green]Suggested session:[/green] {recommendation['session_type']}")
+    if recommendation.get("focus"):
+        console.print(f"[blue]Focus Area:[/blue] {recommendation['focus']}")
+    console.print(f"[dim]{recommendation['reason']}[/dim]")
 
 
 @app.command()
 def flashcards(
     agent: str = typer.Argument(..., help="Agent ID"),
     deck: Optional[str] = typer.Option(None, "--deck", "-d", help="Specific deck ID"),
+    limit: int = typer.Option(5, "--limit", "-l", help="Number of cards to preview"),
+    list_only: bool = typer.Option(False, "--list", help="Only list available decks"),
 ) -> None:
     """Review flashcards."""
-    # TODO: Implement flashcard review
+    deck_paths = sorted(FLASHCARD_DECKS_DIR.glob("*.json"))
+    if not deck_paths:
+        console.print("[yellow]No flashcard decks found.[/yellow]")
+        return
+
+    if list_only:
+        console.print("[green]Available decks:[/green]")
+        for path in deck_paths:
+            console.print(f"  • {path.stem}")
+        return
+
+    if not deck:
+        deck_path = deck_paths[0]
+    else:
+        deck_path = FLASHCARD_DECKS_DIR / (deck if deck.endswith(".json") else f"{deck}.json")
+        if not deck_path.exists():
+            console.print(f"[red]Deck not found: {deck_path.name}[/red]")
+            return
+
+    with open(deck_path, "r", encoding="utf-8") as handle:
+        deck_data = json.load(handle)
+
+    cards = deck_data.get("cards", [])[:limit]
+    console.print(f"[blue]Reviewing {len(cards)} card(s) from {deck_data.get('name')}[/blue]")
+    for idx, card in enumerate(cards, 1):
+        console.print(f"\n[cyan]{idx}. {card['front'].get('question')}[/cyan]")
+        hints = card["front"].get("hints", [])
+        if hints:
+            console.print(f"[dim]Hints: {', '.join(hints)}[/dim]")
+        console.print(f"[green]Answer:[/green] {card['back'].get('answer')}")
+
+    memory_service.log_daily_activity(
+        agent,
+        "flashcard_review",
+        {"deck": deck_data.get("deck_id"), "cards_viewed": len(cards)},
+    )
 
 
 @app.command()
@@ -274,7 +469,29 @@ def leaderboard(
     top: int = typer.Option(10, "--top", "-t"),
 ) -> None:
     """View training leaderboard."""
-    # TODO: Implement leaderboard
+    progress_map = training_manager.progress_repo.load_all()  # type: ignore[attr-defined]
+    if not progress_map:
+        console.print("[yellow]No agents have recorded progress yet.[/yellow]")
+        return
+
+    ranked = sorted(progress_map.values(), key=lambda p: p.xp.total, reverse=True)[:top]
+    table = Table(title="Agent Leaderboard")
+    table.add_column("#", justify="right")
+    table.add_column("Agent")
+    table.add_column("Level", justify="right")
+    table.add_column("XP", justify="right")
+    table.add_column("Streak", justify="right")
+
+    for idx, progress in enumerate(ranked, 1):
+        table.add_row(
+            str(idx),
+            progress.agent_id,
+            str(progress.current_level),
+            str(progress.xp.total),
+            str(progress.daily_streak.current),
+        )
+
+    console.print(table)
 
 
 @app.command()
@@ -283,7 +500,219 @@ def report(
     output: Optional[Path] = typer.Option(None, "--output", "-o", help="Output file path"),
 ) -> None:
     """Generate progress report."""
-    # TODO: Implement report generation
+    progress = training_manager.get_progress(agent)
+    if not progress:
+        console.print("[red]Agent not found. Initialize the agent first.[/red]")
+        raise typer.Exit(1)
+
+    stats = token_tracker.get_agent_stats(agent)
+    recommendation = _build_recommendation(agent) or {}
+
+    report_data = {
+        "agent": agent,
+        "level": progress.current_level,
+        "xp": progress.xp.model_dump(),
+        "streak": progress.daily_streak.model_dump(),
+        "token_stats": stats.model_dump(),
+        "recommendation": recommendation,
+        "generated_at": datetime.now(timezone.utc).isoformat(),
+    }
+
+    if output:
+        output.parent.mkdir(parents=True, exist_ok=True)
+        with open(output, "w", encoding="utf-8") as handle:
+            json.dump(report_data, handle, indent=2, default=str)
+        console.print(f"[green]Report written to {output}[/green]")
+    else:
+        console.print(json.dumps(report_data, indent=2))
+
+
+def _complete_structured_session(agent: str, session) -> List[str]:
+    warnings: List[str] = []
+    for activity in session.activities:
+        start_time = datetime.now(timezone.utc)
+        duration_factor = random.uniform(0.6, 1.4)
+        completed_at = start_time + timedelta(
+            minutes=activity.estimated_duration_minutes * duration_factor
+        )
+        score = max(60.0, min(100.0, 85 + random.uniform(-12, 8)))
+        result = ActivityResult(
+            activity=activity,
+            started_at=start_time,
+            completed_at=completed_at,
+            score=score,
+            passed=score >= 70,
+            xp_earned=activity.xp_reward,
+        )
+        session.record_result(result)
+        warnings.extend(
+            _record_token_usage(
+                session.session_id,
+                agent,
+                activity,
+                score,
+            )
+        )
+
+    session.complete()
+    return warnings
+
+
+def _record_token_usage(
+    session_id: str,
+    agent_id: str,
+    activity,
+    score: float,
+) -> List[str]:
+    prompt_tokens = 180 + activity.difficulty * 30
+    context_tokens = 100 + activity.difficulty * 40
+    user_input_tokens = 60 + activity.difficulty * 10
+    completion_tokens = 140 + activity.difficulty * 35
+    cached_tokens = 25 + activity.difficulty * 5
+
+    metrics = token_tracker.record_operation(
+        session_id=session_id,
+        agent_id=agent_id,
+        operation_id=activity.activity_id,
+        prompt_tokens=prompt_tokens,
+        context_tokens=context_tokens,
+        user_input_tokens=user_input_tokens,
+        completion_tokens=completion_tokens,
+        cached_tokens=cached_tokens,
+        output_quality_score=score,
+        context_utilization_score=max(50, min(95, 75 + random.uniform(-15, 15))),
+        operation_type=activity.activity_type.value,
+        language=activity.language or "python",
+    )
+
+    warnings: List[str] = []
+    budget_key = _budget_key_for_activity(activity.activity_type)
+    budget = _get_operation_budget(budget_key)
+    if budget:
+        budget_result = token_tracker.check_budget(metrics, budget)
+        warnings.extend(budget_result.get("warnings", []))
+    return warnings
+
+
+def _record_simulation_tokens(
+    session_id: str,
+    agent_id: str,
+    files_processed: int,
+    fatigue_level: float,
+    score: float,
+):
+    prompt_tokens = 120 + files_processed * 20
+    context_tokens = files_processed * 40
+    completion_tokens = 100 + int(score)
+    cached_tokens = max(0, int(prompt_tokens * 0.1))
+
+    metrics = token_tracker.record_operation(
+        session_id=session_id,
+        agent_id=agent_id,
+        operation_id=f"{session_id}-summary",
+        prompt_tokens=prompt_tokens,
+        context_tokens=context_tokens,
+        user_input_tokens=80,
+        completion_tokens=completion_tokens,
+        cached_tokens=cached_tokens,
+        output_quality_score=score,
+        context_utilization_score=max(40, 80 - fatigue_level * 10),
+        operation_type="coding_exercise",
+        language="python",
+    )
+
+    budget = _get_operation_budget("coding_exercise")
+    if budget:
+        token_tracker.check_budget(metrics, budget)
+
+    return token_tracker.get_session_summary(session_id)
+
+
+def _get_operation_budget(operation_key: str) -> Optional[TokenBudget]:
+    operations = TOKEN_BUDGET_CONFIG.get("operations", {})
+    data = operations.get(operation_key)
+    if not data:
+        return None
+    payload = {"operation_type": operation_key}
+    payload.update(data)
+    return TokenBudget(**payload)
+
+
+def _budget_key_for_activity(activity_type: ActivityType) -> str:
+    mapping = {
+        ActivityType.SYNTAX_DRILL: "coding_exercise",
+        ActivityType.CODING_EXERCISE: "coding_exercise",
+        ActivityType.ALGORITHM_CHALLENGE: "coding_exercise",
+        ActivityType.ASSESSMENT: "assessment",
+        ActivityType.FLASHCARD_REVIEW: "flashcard_review",
+        ActivityType.REFLECTION: "flashcard_review",
+        ActivityType.RESEARCH: "coding_exercise",
+    }
+    return mapping.get(activity_type, "coding_exercise")
+
+
+def _print_xp_breakdown(progress) -> None:
+    if not progress.xp.by_category:
+        return
+    table = Table(title="XP by Category")
+    table.add_column("Category")
+    table.add_column("XP", justify="right")
+    for category, xp in sorted(progress.xp.by_category.items(), key=lambda item: item[1], reverse=True):
+        table.add_row(category, str(xp))
+    console.print(table)
+
+    if progress.xp.by_language:
+        lang_table = Table(title="XP by Language")
+        lang_table.add_column("Language")
+        lang_table.add_column("XP", justify="right")
+        for language, xp in sorted(progress.xp.by_language.items(), key=lambda item: item[1], reverse=True):
+            lang_table.add_row(language, str(xp))
+        console.print(lang_table)
+
+
+def _print_badges(progress) -> None:
+    if not progress.badges:
+        console.print("[dim]No badges earned yet.[/dim]")
+        return
+    table = Table(title="Recent Badges")
+    table.add_column("Name")
+    table.add_column("Earned At")
+    for badge in progress.badges[-5:]:
+        table.add_row(f"{badge.icon} {badge.name}", badge.earned_at.isoformat())
+    console.print(table)
+
+
+def _build_recommendation(agent: str) -> Optional[Dict[str, Any]]:
+    progress = training_manager.get_progress(agent)
+    if not progress:
+        return None
+
+    stats = token_tracker.get_agent_stats(agent)
+    session_type = SessionType.DAILY.value
+    focus = None
+    reason = "Maintain daily cadence."
+
+    if progress.weaknesses:
+        priority_order = {"critical": 0, "high": 1, "medium": 2, "low": 3}
+        weakness = sorted(
+            progress.weaknesses,
+            key=lambda w: priority_order.get(w.priority, 4),
+        )[0]
+        session_type = SessionType.REMEDIAL.value
+        focus = weakness.skill
+        reason = f"Address weakness in {weakness.skill}."
+    elif progress.current_level >= 4:
+        session_type = SessionType.ADVANCEMENT.value
+        reason = "Agent eligible for advancement drills."
+
+    if stats.avg_efficiency_score and stats.avg_efficiency_score < 3.5:
+        reason += " Optimize context usage to boost efficiency."
+
+    return {
+        "session_type": session_type,
+        "focus": focus,
+        "reason": reason,
+    }
 
 
 # Reflex Commands

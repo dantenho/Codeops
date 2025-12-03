@@ -1,0 +1,287 @@
+# Token Budget Configuration
+# Defines token limits for different operations and patterns
+
+version: "1.0.0"
+last_updated: "2025-12-03"
+
+# === OPERATION BUDGETS ===
+
+operations:
+  # Vibe Coding Operations
+  vibe_code_generation:
+    max_tokens: 4000
+    max_context_tokens: 2000
+    max_completion_tokens: 2000
+    warn_at_tokens: 3500
+    warn_at_cost_usd: 0.10
+    allow_caching: true
+    allow_context_compression: true
+    min_quality_score: 70.0
+
+  vibe_code_refinement:
+    max_tokens: 3000
+    max_context_tokens: 1500
+    max_completion_tokens: 1500
+    warn_at_tokens: 2700
+    allow_caching: true
+    allow_context_compression: true
+    min_quality_score: 75.0
+
+  # Training Operations
+  flashcard_review:
+    max_tokens: 500
+    max_context_tokens: 200
+    max_completion_tokens: 300
+    warn_at_tokens: 450
+    allow_caching: true
+    min_quality_score: 60.0
+
+  coding_exercise:
+    max_tokens: 2500
+    max_context_tokens: 1200
+    max_completion_tokens: 1300
+    warn_at_tokens: 2200
+    allow_caching: true
+    allow_context_compression: true
+    min_quality_score: 70.0
+
+  code_review:
+    max_tokens: 3500
+    max_context_tokens: 2000
+    max_completion_tokens: 1500
+    warn_at_tokens: 3200
+    allow_caching: true
+    allow_context_compression: true
+    min_quality_score: 80.0
+
+  assessment:
+    max_tokens: 3000
+    max_context_tokens: 1500
+    max_completion_tokens: 1500
+    warn_at_tokens: 2700
+    allow_caching: false  # Fresh assessment each time
+    min_quality_score: 85.0
+
+  # Error Handling Operations
+  error_diagnosis:
+    max_tokens: 2000
+    max_context_tokens: 1000
+    max_completion_tokens: 1000
+    warn_at_tokens: 1800
+    allow_caching: true
+    min_quality_score: 75.0
+
+  error_recovery:
+    max_tokens: 1500
+    max_context_tokens: 700
+    max_completion_tokens: 800
+    warn_at_tokens: 1300
+    allow_caching: true
+    min_quality_score: 70.0
+
+  # Documentation Operations
+  code_documentation:
+    max_tokens: 2000
+    max_context_tokens: 1200
+    max_completion_tokens: 800
+    warn_at_tokens: 1800
+    allow_caching: true
+    min_quality_score: 75.0
+
+  readme_generation:
+    max_tokens: 3000
+    max_context_tokens: 1500
+    max_completion_tokens: 1500
+    warn_at_tokens: 2700
+    allow_caching: true
+    min_quality_score: 80.0
+
+# === PATTERN-SPECIFIC BUDGETS ===
+
+patterns:
+  # Python Patterns
+  python_fastapi_endpoint:
+    recommended_budget: 1000
+    min_budget: 500
+    max_budget: 2000
+    context_allocation: 0.40  # 40% for context
+    completion_allocation: 0.60  # 60% for generation
+
+  python_sqlalchemy_crud:
+    recommended_budget: 1500
+    min_budget: 800
+    max_budget: 2500
+    context_allocation: 0.45
+    completion_allocation: 0.55
+
+  python_pytest_test:
+    recommended_budget: 800
+    min_budget: 400
+    max_budget: 1500
+    context_allocation: 0.35
+    completion_allocation: 0.65
+
+  # TypeScript Patterns
+  typescript_express_route:
+    recommended_budget: 1200
+    min_budget: 600
+    max_budget: 2000
+    context_allocation: 0.40
+    completion_allocation: 0.60
+
+  typescript_react_component:
+    recommended_budget: 1300
+    min_budget: 700
+    max_budget: 2200
+    context_allocation: 0.42
+    completion_allocation: 0.58
+
+  # Rust Patterns
+  rust_actix_handler:
+    recommended_budget: 1400
+    min_budget: 700
+    max_budget: 2300
+    context_allocation: 0.45
+    completion_allocation: 0.55
+
+  rust_error_type:
+    recommended_budget: 700
+    min_budget: 350
+    max_budget: 1200
+    context_allocation: 0.30
+    completion_allocation: 0.70
+
+# === COMPLEXITY-BASED BUDGETS ===
+
+complexity_multipliers:
+  simple: 1.0
+  moderate: 1.5
+  complex: 2.5
+  very_complex: 4.0
+
+# === AGENT-LEVEL BUDGETS ===
+
+agent_limits:
+  # Per-session limits
+  max_tokens_per_session: 20000
+  max_cost_per_session_usd: 1.00
+
+  # Daily limits
+  max_tokens_per_day: 100000
+  max_cost_per_day_usd: 5.00
+
+  # Monthly limits
+  max_tokens_per_month: 2000000
+  max_cost_per_month_usd: 100.00
+
+# === OPTIMIZATION TARGETS ===
+
+optimization_targets:
+  # Token efficiency targets
+  target_tokens_per_operation: 1500
+  target_context_utilization: 0.70  # 70% of context should be used
+  target_cache_hit_rate: 0.50  # 50% cache hits
+
+  # Quality targets
+  target_quality_score: 85.0
+  target_efficiency_score: 5.0  # quality per 100 tokens
+
+  # Cost targets
+  target_cost_per_operation_usd: 0.02
+  target_cost_per_quality_point: 0.0003
+
+# === BUDGET ALERTS ===
+
+alerts:
+  # Warning thresholds (% of budget)
+  warning_threshold: 0.85
+  critical_threshold: 0.95
+
+  # Alert actions
+  on_warning:
+    - log_warning
+    - notify_agent
+    - suggest_optimization
+
+  on_critical:
+    - log_error
+    - notify_agent
+    - enable_compression
+    - reduce_context
+
+  on_exceeded:
+    - log_error
+    - notify_admin
+    - pause_operation
+    - require_approval
+
+# === DYNAMIC BUDGET ADJUSTMENT ===
+
+dynamic_adjustment:
+  enabled: true
+
+  # Adjust budgets based on agent performance
+  performance_tiers:
+    excellent:  # Quality > 90, Efficiency > 6
+      budget_multiplier: 1.2
+      cache_ttl_multiplier: 1.5
+
+    good:  # Quality > 80, Efficiency > 4
+      budget_multiplier: 1.0
+      cache_ttl_multiplier: 1.0
+
+    fair:  # Quality > 70, Efficiency > 2
+      budget_multiplier: 0.8
+      cache_ttl_multiplier: 0.8
+
+    poor:  # Below thresholds
+      budget_multiplier: 0.6
+      cache_ttl_multiplier: 0.5
+
+  # Adjust based on time of day
+  time_based_adjustment:
+    peak_hours: [9, 10, 11, 14, 15, 16]  # UTC hours
+    peak_multiplier: 0.8  # Reduce during peak
+    off_peak_multiplier: 1.2  # Increase during off-peak
+
+# === MONITORING ===
+
+monitoring:
+  track_metrics:
+    - total_tokens
+    - input_tokens
+    - output_tokens
+    - context_tokens
+    - cached_tokens
+    - cost_usd
+    - quality_score
+    - efficiency_score
+    - cache_hit_rate
+    - context_utilization
+    - generation_time_ms
+
+  aggregation_intervals:
+    - per_operation
+    - per_session
+    - hourly
+    - daily
+    - weekly
+    - monthly
+
+  retention:
+    per_operation_days: 90
+    aggregated_days: 365
+    long_term_months: 24
+
+# === EMERGENCY CONTROLS ===
+
+emergency:
+  # Kill switch
+  enable_emergency_mode: false
+
+  emergency_mode_settings:
+    max_tokens_per_operation: 500
+    disable_context: true
+    disable_patterns: true
+    use_cache_only: true
+    min_confidence_required: 0.90

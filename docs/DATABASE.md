@@ -11,6 +11,7 @@ EudoraX Prototype uses a **multi-database strategy** to optimize for different d
 **Use Case**: Embeddings for images, text, code, and agent learning
 
 **Why ChromaDB?**
+
 - ✅ Optimized for similarity search
 - ✅ Simple Python API
 - ✅ Local-first with persistence
@@ -20,6 +21,7 @@ EudoraX Prototype uses a **multi-database strategy** to optimize for different d
 **Location**: `CodeAgents/Training/chroma_db/`
 
 **Collections**:
+
 - `images`: Image CLIP embeddings and metadata
 - `agent_knowledge`: Agent learning data and experiences
 - `conversations`: Chat history embeddings
@@ -127,6 +129,7 @@ The `tools/Pylorix` Database Testing feature benchmarks 5 different databases. U
 **Use Case**: Full-stack applications with auth, storage, and real-time features
 
 **Pros**:
+
 - ✅ Managed PostgreSQL in the cloud
 - ✅ Built-in authentication
 - ✅ Real-time subscriptions
@@ -134,6 +137,7 @@ The `tools/Pylorix` Database Testing feature benchmarks 5 different databases. U
 - ✅ Generous free tier
 
 **Cons**:
+
 - ❌ Requires internet connection
 - ❌ Not optimized for vectors (without pgvector extension)
 
@@ -191,18 +195,21 @@ CREATE INDEX idx_images_model ON images(model);
 **Use Case**: Relational data, complex queries, ACID transactions
 
 **Pros**:
+
 - ✅ Mature and reliable
 - ✅ Advanced SQL features
 - ✅ pgvector extension for embeddings
 - ✅ Local control
 
 **Cons**:
+
 - ❌ Requires separate server
 - ❌ More complex setup
 
 **Setup**:
 
 1. Install PostgreSQL:
+
 ```bash
 # Windows (with Chocolatey)
 choco install postgresql
@@ -215,6 +222,7 @@ brew install postgresql
 ```
 
 2. Start service:
+
 ```bash
 # Windows
 net start postgresql
@@ -224,6 +232,7 @@ brew services start postgresql
 ```
 
 3. Create database:
+
 ```bash
 createdb eudorax_prototype
 ```
@@ -294,12 +303,14 @@ LIMIT 10;
 **Use Case**: Relationship mapping, model lineage, agent collaboration graphs
 
 **Pros**:
+
 - ✅ Native graph storage
 - ✅ Cypher query language
 - ✅ Visual graph exploration
 - ✅ Great for relationships
 
 **Cons**:
+
 - ❌ Requires separate server
 - ❌ Different query paradigm
 
@@ -360,12 +371,14 @@ RETURN i
 **Use Case**: Flexible schemas, JSON-like documents
 
 **Pros**:
+
 - ✅ Flexible schema
 - ✅ JSON-native
 - ✅ Good for evolving data models
 - ✅ Horizontal scaling
 
 **Cons**:
+
 - ❌ No ACID transactions (limited)
 - ❌ Not optimized for vectors
 
@@ -416,6 +429,7 @@ Pylorix includes a comprehensive database testing feature to benchmark and compa
 ### Access the Tool
 
 1. Launch Pylorix:
+
 ```bash
 cd tools/Pylorix
 python app.py
@@ -430,6 +444,7 @@ python app.py
 ### Scoring System
 
 Each database is graded on:
+
 - **Connection Time** (20 points)
 - **Write Performance** (25 points)
 - **Read Performance** (25 points)
@@ -437,6 +452,7 @@ Each database is graded on:
 - **Reliability** (10 points)
 
 **Grades**:
+
 - **A+** (90-100): Excellent, recommended
 - **A** (80-89): Very good
 - **B** (70-79): Good
@@ -591,6 +607,7 @@ collection = client.get_or_create_collection("images")
 ### Supabase: "API key invalid"
 
 Check your `.env`:
+
 ```bash
 # Ensure anon key, not service_role key
 SUPABASE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
@@ -610,6 +627,7 @@ pg_isready
 ### Neo4j: "Authentication failed"
 
 Reset password in Neo4j Desktop or:
+
 ```bash
 neo4j-admin set-initial-password new_password
 ```

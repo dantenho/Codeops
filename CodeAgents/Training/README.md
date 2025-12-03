@@ -52,6 +52,23 @@ training leaderboard --top 10
 training report ClaudeCode --period week
 ```
 
+## CLI Commands
+
+The `training` Typer CLI now provides a complete workflow for managing agent drills:
+
+| Command | Purpose |
+| --- | --- |
+| `training init <agent>` | Create or reset an agent profile. Add `--force` to overwrite existing progress. |
+| `training start <agent> --type daily|weekly|market_analysis` | Launches a structured session, simulates activity results, records XP, and logs token metrics. |
+| `training progress <agent> [--detailed]` | Displays current level, streaks, XP breakdown, and aggregated token stats. |
+| `training recommend <agent>` | Suggests the next session type based on weaknesses and efficiency data. |
+| `training flashcards [--deck python_syntax_level1] [--limit 5]` | Lists decks or previews the specified deck while logging daily activity. |
+| `training leaderboard [--top 10]` | Ranks agents by total XP for quick comparisons. |
+| `training report <agent> [--output reports/agent.json]` | Generates a JSON snapshot containing XP, streaks, token stats, and recommendations. |
+| `training simulate <agent> [--iterations 10]` | Runs repeated solo sessions, publishes token usage totals, and surfaces optimization suggestions. |
+
+All commands automatically feed `MemoryService`, `TokenTracker`, and telemetry logging so CI/CD workflows can audit training runs.
+
 ## Architecture
 
 ```

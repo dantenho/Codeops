@@ -17,6 +17,7 @@ from ..models.activity import TrainingActivity, ActivityType, ActivityStatus
 from ..models.progress import AgentProgress
 from .config_service import ConfigService
 from .threndia_service import ThrendiaService
+from ..data.progress_repository import get_progress_repository
 
 
 class TrainingManager:
@@ -32,6 +33,9 @@ class TrainingManager:
         self.data_path.mkdir(exist_ok=True)
         self._threndia_cache: Dict[str, Dict[str, Any]] = {}
         self._latest_threndia_metadata: Dict[str, Dict[str, Any]] = {}
+
+        # Initialize progress repository
+        self.progress_repo = get_progress_repository(self.data_path / "progress")
 
     def initialize_agent(self, agent_id: str) -> AgentProgress:
         """Initialize a new agent progress record."""
@@ -118,14 +122,60 @@ class TrainingManager:
 
     def get_progress(self, agent_id: str) -> Optional[AgentProgress]:
         """Load agent progress from disk."""
-        # TODO: Implement persistence (JSON/DB)
-        # For now, return None to trigger initialization
-        return None
+        return self.progress_repo.load(agent_id)
 
-    def _save_progress(self, progress: AgentProgress) -> None:
-        """Save agent progress to disk."""
-        # TODO: Implement persistence
-        pass
+    def _save_progress(self, progress: AgentProgress, create_snapshot: bool = False) -> None:
+        """
+        Save agent progress to disk.
+
+        Args:
+            progress: AgentProgress to save
+            create_snapshot: Whether to create historical snapshot
+        """
+        self.progress_repo.save(progress, create_snapshot=create_snapshot)
+
+    def update_progress_after_session(
+        self,
+        agent_id: str,
+        session: TrainingSession,
+        create_snapshot: bool = True
+    ) -> AgentProgress:
+        """
+        Update agent progress after completing a training session.
+
+        Args:
+            agent_id: Agent identifier
+            session: Completed training session
+            create_snapshot: Whether to create historical snapshot
+
+        Returns:
+            Updated AgentProgress
+        """
+        progress = self.get_progress(agent_id)
+        if not progress:
+            progress = self.initialize_agent(agent_id)
+
+        # Update XP from session
+        total_xp = session.total_xp_earned
+        progress.xp.total += total_xp
+
+        # Check for level up
+        from ..models.progress import LEVEL_THRESHOLDS
+        for level, threshold in sorted(LEVEL_THRESHOLDS.items(), reverse=True):
+            if progress.xp.total >= threshold:
+                progress.current_level = level
+                break
+
+        # Update streaks
+        progress.daily_streak.current += 1
+        if progress.daily_streak.current > progress.daily_streak.longest:
+            progress.daily_streak.longest = progress.daily_streak.current
+        progress.daily_streak.last_activity = datetime.now(timezone.utc).date()
+
+        # Save with snapshot
+        self._save_progress(progress, create_snapshot=create_snapshot)
+
+        return progress
 
     def _get_threndia_settings(self, agent_id: str) -> Optional[Dict[str, Any]]:
         """Return cached Threndia configuration for an agent."""

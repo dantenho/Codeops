@@ -182,6 +182,35 @@ jobs:
           mypy . --ignore-missing-imports --show-error-codes
         continue-on-error: true # Warning only for now
 
+  run-tests:
+    name: ✅ Unit Tests
+    runs-on: ubuntu-latest
+    needs: validate-code-quality
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install UV
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
+
+      - name: Install test dependencies
+        run: |
+          uv pip install --system pytest pytest-cov typer rich filelock chromadb tiktoken
+
+      - name: Optimization pipeline tests
+        run: python -m pytest CodeAgents/GitHub/tests
+
+      - name: Training CLI tests
+        run: python -m pytest CodeAgents/Training/tests/test_cli.py
+
   # ──────────────────────────────────────────────────────────────────────────
   # JOB 4: Validate telemetry logs
   # ──────────────────────────────────────────────────────────────────────────
@@ -280,7 +309,8 @@ jobs:
   compliance-report:
     name: 📋 Compliance Report
     runs-on: ubuntu-latest
-    needs: [detect-agent, validate-documentation, validate-code-quality]
+    needs:
+      [detect-agent, validate-documentation, validate-code-quality, run-tests]
     if: always()
 
     steps:

@@ -30,3 +30,4 @@
 
 - Added `CodeAgents/Memory/Composer.md` so Composer's actions, learned protocols, and architectural decisions persist across tasks.
 - Telemetry log recorded in `CodeAgents/Composer/logs` for this restructuring effort to satisfy Agents.MD reporting rules.
+-
