@@ -1,0 +1,20 @@
+[project]
+name = "eudorax-backend-api"
+version = "1.0.0"
+description = "FastAPI server with AMES for EudoraX"
+readme = "README.md"
+requires-python = ">=3.11"
+
+dependencies = [
+    "eudorax-core",
+    "eudorax-training",
+    "eudorax-evaluation",
+    "fastapi>=0.104.0",
+    "uvicorn>=0.24.0",
+    "python-dotenv>=1.0.0",
+    "httpx>=0.24.0",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"

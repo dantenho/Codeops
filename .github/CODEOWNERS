@@ -1,0 +1,53 @@
+# CODEOWNERS file
+# This file defines code ownership for automatic PR reviews
+# See: https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
+
+# Global owners (fallback)
+* @Eudora-IA/maintainers
+
+# Core system files
+/Agents.MD @Eudora-IA/maintainers
+/CONTRIBUTING.md @Eudora-IA/maintainers
+/docs/ @Eudora-IA/maintainers
+
+# Agent-specific directories
+/CodeAgents/ID/Composer/ @Eudora-IA/composer-maintainers
+/CodeAgents/ID/DeepSeekR1/ @Eudora-IA/deepseek-maintainers
+/CodeAgents/ID/GPT-5.1-Codex/ @Eudora-IA/gpt-maintainers
+/CodeAgents/ID/ClaudeCode/ @Eudora-IA/claude-maintainers
+/CodeAgents/ID/GrokIA/ @Eudora-IA/grok-maintainers
+/CodeAgents/ID/GeminiFlash25/ @Eudora-IA/gemini-maintainers
+/CodeAgents/ID/GeminiPro25/ @Eudora-IA/gemini-maintainers
+/CodeAgents/ID/GeminiPro30/ @Eudora-IA/gemini-maintainers
+/CodeAgents/ID/Jules/ @Eudora-IA/jules-maintainers
+/CodeAgents/ID/Antigravity/ @Eudora-IA/antigravity-maintainers
+
+# Core agent infrastructure
+/CodeAgents/core/ @Eudora-IA/core-maintainers
+/CodeAgents/schemas/ @Eudora-IA/core-maintainers
+/CodeAgents/Errors/ @Eudora-IA/core-maintainers
+/CodeAgents/Evaluation/ @Eudora-IA/core-maintainers
+
+# Training system
+/CodeAgents/Training/ @Eudora-IA/training-maintainers
+
+# GitHub integration
+/CodeAgents/GitHub/ @Eudora-IA/github-maintainers
+
+# Backend
+/backend/ @Eudora-IA/backend-maintainers
+
+# Skeleton generator
+/skeleton-generator/ @Eudora-IA/tooling-maintainers
+
+# Workflows and GitHub configuration
+/.github/ @Eudora-IA/devops-maintainers
+
+# Configuration files
+/config/ @Eudora-IA/core-maintainers
+
+# Telemetry and metrics
+/token_metrics/ @Eudora-IA/core-maintainers
+
+# Documentation
+/docs/ @Eudora-IA/docs-maintainers

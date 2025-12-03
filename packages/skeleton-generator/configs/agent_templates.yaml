@@ -1,0 +1,109 @@
+# Agent Template Configurations
+# Agent: GrokIA
+# Timestamp: 2025-12-03T15:34:00Z
+
+agent_templates:
+  grokia:
+    display_name: "GrokIA (Cline)"
+    description: "Advanced coding agent with multi-language support"
+    capabilities:
+      - "code_generation"
+      - "code_analysis"
+      - "debugging"
+      - "refactoring"
+      - "documentation"
+    training_config:
+      difficulty_progression: "adaptive"
+      session_length: 45
+      focus_areas: ["algorithms", "best_practices", "code_quality"]
+    memory_config:
+      context_window: 8192
+      memory_decay: 0.95
+      learning_rate: 0.001
+
+  claude_code:
+    display_name: "Claude Code"
+    description: "Anthropic's coding assistant with reasoning capabilities"
+    capabilities:
+      - "complex_reasoning"
+      - "code_review"
+      - "architecture_design"
+      - "testing"
+    training_config:
+      difficulty_progression: "gradual"
+      session_length: 60
+      focus_areas: ["system_design", "problem_solving"]
+    memory_config:
+      context_window: 16384
+      memory_decay: 0.92
+      learning_rate: 0.0008
+
+  gemini_flash:
+    display_name: "Gemini Flash 2.5"
+    description: "Fast response agent optimized for quick tasks"
+    capabilities:
+      - "rapid_prototyping"
+      - "simple_tasks"
+      - "code_snippets"
+    training_config:
+      difficulty_progression: "fast"
+      session_length: 30
+      focus_areas: ["efficiency", "quick_wins"]
+    memory_config:
+      context_window: 4096
+      memory_decay: 0.98
+      learning_rate: 0.002
+
+  gemini_pro:
+    display_name: "Gemini Pro 2.5"
+    description: "Advanced reasoning agent for complex problems"
+    capabilities:
+      - "deep_analysis"
+      - "research"
+      - "complex_math"
+      - "creative_solutions"
+    training_config:
+      difficulty_progression: "challenging"
+      session_length: 90
+      focus_areas: ["research", "analysis", "creativity"]
+    memory_config:
+      context_window: 32768
+      memory_decay: 0.90
+      learning_rate: 0.0005
+
+  composer:
+    display_name: "Composer (Cursor)"
+    description: "Multi-agent orchestration system"
+    capabilities:
+      - "agent_coordination"
+      - "workflow_orchestration"
+      - "project_management"
+    training_config:
+      difficulty_progression: "adaptive"
+      session_length: 120
+      focus_areas: ["coordination", "optimization"]
+    memory_config:
+      context_window: 12288
+      memory_decay: 0.94
+      learning_rate: 0.0007
+
+# Default configurations applied to all agents
+defaults:
+  quality_thresholds:
+    code_coverage: 80
+    documentation: 85
+    complexity_score: 7
+    test_passing: 100
+
+  rules:
+    - "Always include comprehensive docstrings"
+    - "Follow PEP 8 style guidelines"
+    - "Implement proper error handling"
+    - "Write unit tests for all functions"
+    - "Use type hints throughout"
+
+  methods:
+    - "Test-driven development"
+    - "Continuous integration"
+    - "Code review process"
+    - "Documentation first"

@@ -1,0 +1,16 @@
+[project]
+name = "eudorax-vibecode"
+version = "1.0.0"
+description = "Natural language code generation for EudoraX"
+readme = "README.md"
+requires-python = ">=3.11"
+
+dependencies = [
+    "eudorax-core",
+    "pydantic>=2.0.0",
+    "pyyaml>=6.0",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"

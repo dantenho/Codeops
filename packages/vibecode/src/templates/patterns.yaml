@@ -1,0 +1,498 @@
+# Vibe Code Pattern Library
+# Code generation patterns for intuitive development
+
+meta:
+  version: "1.0.0"
+  last_updated: "2025-12-03"
+  total_patterns: 30
+
+# Pattern categories:
+# - api: API/endpoint patterns
+# - crud: Database CRUD operations
+# - test: Testing patterns
+# - async: Asynchronous/concurrent patterns
+# - error: Error handling patterns
+# - validation: Input validation patterns
+# - auth: Authentication/authorization patterns
+
+patterns:
+  # === PYTHON PATTERNS ===
+
+  - pattern_id: python_fastapi_endpoint
+    name: FastAPI REST Endpoint
+    language: python
+    framework: fastapi
+    category: api
+    description: RESTful API endpoint with validation and error handling
+    intent_keywords: [api, endpoint, route, handler, rest, http, get, post]
+    token_cost: 450
+    complexity: simple
+    prerequisites:
+      - fastapi_app_instance
+      - pydantic_models
+    template: |
+      from fastapi import APIRouter, HTTPException, Depends
+      from pydantic import BaseModel
+
+      router = APIRouter()
+
+      class {RequestModel}(BaseModel):
+          {request_fields}
+
+      class {ResponseModel}(BaseModel):
+          {response_fields}
+
+      @router.{method}("/{path}")
+      async def {function_name}(
+          {params}: {RequestModel},
+          {dependencies}
+      ) -> {ResponseModel}:
+          """
+          {description}
+
+          Args:
+              {params}: Request payload
+
+          Returns:
+              {ResponseModel}: Response data
+
+          Raises:
+              HTTPException: On validation or processing errors
+          """
+          try:
+              # {implementation_comment}
+              result = {implementation}
+              return {ResponseModel}(**result)
+          except ValueError as e:
+              raise HTTPException(status_code=400, detail=str(e))
+          except Exception as e:
+              raise HTTPException(status_code=500, detail="Internal server error")
+
+    placeholders:
+      - name: method
+        type: enum
+        values: [get, post, put, delete, patch]
+        default: post
+      - name: path
+        type: string
+        description: API path (e.g., users, items/{id})
+      - name: function_name
+        type: identifier
+        pattern: "^[a-z_][a-z0-9_]*$"
+      - name: RequestModel
+        type: class_name
+        pattern: "^[A-Z][a-zA-Z0-9]*$"
+      - name: ResponseModel
+        type: class_name
+        pattern: "^[A-Z][a-zA-Z0-9]*$"
+
+    example_input: "Create a POST endpoint for creating users"
+    example_output: "Complete FastAPI endpoint with models and error handling"
+
+  - pattern_id: python_sqlalchemy_crud
+    name: SQLAlchemy CRUD Operations
+    language: python
+    framework: sqlalchemy
+    category: crud
+    description: Database CRUD operations with SQLAlchemy ORM
+    intent_keywords: [database, crud, create, read, update, delete, model, orm]
+    token_cost: 600
+    complexity: moderate
+    prerequisites:
+      - sqlalchemy_session
+      - database_models
+    template: |
+      from sqlalchemy.orm import Session
+      from sqlalchemy.exc import IntegrityError
+      from typing import List, Optional
+
+      class {ModelName}Repository:
+          """Repository for {ModelName} CRUD operations."""
+
+          def __init__(self, db: Session):
+              self.db = db
+
+          def create(self, **data) -> {ModelName}:
+              """Create a new {model_name}."""
+              obj = {ModelName}(**data)
+              try:
+                  self.db.add(obj)
+                  self.db.commit()
+                  self.db.refresh(obj)
+                  return obj
+              except IntegrityError as e:
+                  self.db.rollback()
+                  raise ValueError(f"Failed to create {model_name}: {e}")
+
+          def get(self, {primary_key}: {key_type}) -> Optional[{ModelName}]:
+              """Get {model_name} by ID."""
+              return self.db.query({ModelName}).filter(
+                  {ModelName}.{primary_key} == {primary_key}
+              ).first()
+
+          def get_all(self, skip: int = 0, limit: int = 100) -> List[{ModelName}]:
+              """Get all {model_name}s with pagination."""
+              return self.db.query({ModelName}).offset(skip).limit(limit).all()
+
+          def update(self, {primary_key}: {key_type}, **data) -> Optional[{ModelName}]:
+              """Update {model_name}."""
+              obj = self.get({primary_key})
+              if not obj:
+                  return None
+
+              for key, value in data.items():
+                  setattr(obj, key, value)
+
+              try:
+                  self.db.commit()
+                  self.db.refresh(obj)
+                  return obj
+              except IntegrityError as e:
+                  self.db.rollback()
+                  raise ValueError(f"Failed to update {model_name}: {e}")
+
+          def delete(self, {primary_key}: {key_type}) -> bool:
+              """Delete {model_name}."""
+              obj = self.get({primary_key})
+              if not obj:
+                  return False
+
+              self.db.delete(obj)
+              self.db.commit()
+              return True
+
+    placeholders:
+      - name: ModelName
+        type: class_name
+      - name: model_name
+        type: string
+        description: Lowercase model name
+      - name: primary_key
+        type: identifier
+        default: id
+      - name: key_type
+        type: type_hint
+        default: int
+
+  - pattern_id: python_pytest_test
+    name: Pytest Unit Test
+    language: python
+    framework: pytest
+    category: test
+    description: Unit test with fixtures and parametrization
+    intent_keywords: [test, unit test, pytest, testing, verify, check]
+    token_cost: 400
+    complexity: simple
+    template: |
+      import pytest
+      from {module_path} import {function_name}
+
+
+      @pytest.fixture
+      def {fixture_name}():
+          """Fixture for {description}."""
+          # Setup
+          {fixture_setup}
+          yield {fixture_return}
+          # Teardown
+          {fixture_teardown}
+
+
+      class Test{ClassName}:
+          """Test suite for {function_name}."""
+
+          def test_{test_case}_success(self, {fixture_name}):
+              """Test {test_case} with valid input."""
+              # Arrange
+              {arrange}
+
+              # Act
+              result = {function_name}({args})
+
+              # Assert
+              assert result == {expected}
+              {additional_assertions}
+
+          def test_{test_case}_failure(self, {fixture_name}):
+              """Test {test_case} with invalid input."""
+              with pytest.raises({ExceptionType}):
+                  {function_name}({invalid_args})
+
+          @pytest.mark.parametrize("{param_names}", [
+              {test_cases}
+          ])
+          def test_{test_case}_parametrized(self, {param_names}, {fixture_name}):
+              """Parametrized test for {test_case}."""
+              result = {function_name}({param_names})
+              assert result is not None
+
+  # === TYPESCRIPT PATTERNS ===
+
+  - pattern_id: typescript_express_route
+    name: Express.js Route Handler
+    language: typescript
+    framework: express
+    category: api
+    description: Express route with TypeScript types and validation
+    intent_keywords: [api, endpoint, route, express, handler, rest]
+    token_cost: 500
+    complexity: simple
+    prerequisites:
+      - express_app
+      - request_types
+    template: |
+      import { Router, Request, Response, NextFunction } from 'express';
+      import { body, validationResult } from 'express-validator';
+
+      const router = Router();
+
+      interface {RequestType} {
+          {request_fields}
+      }
+
+      interface {ResponseType} {
+          {response_fields}
+      }
+
+      router.{method}(
+          '/{path}',
+          [
+              // Validation middleware
+              {validation_rules}
+          ],
+          async (
+              req: Request<{}, {}, {RequestType}>,
+              res: Response<{ResponseType}>,
+              next: NextFunction
+          ): Promise<void> => {
+              try {
+                  // Check validation errors
+                  const errors = validationResult(req);
+                  if (!errors.isEmpty()) {
+                      res.status(400).json({ errors: errors.array() });
+                      return;
+                  }
+
+                  // {implementation_comment}
+                  const {destructured_params} = req.body;
+
+                  {implementation}
+
+                  res.status({success_status}).json({
+                      {response_object}
+                  });
+              } catch (error) {
+                  next(error);
+              }
+          }
+      );
+
+      export default router;
+
+    placeholders:
+      - name: method
+        type: enum
+        values: [get, post, put, delete, patch]
+      - name: path
+        type: string
+      - name: RequestType
+        type: interface_name
+      - name: ResponseType
+        type: interface_name
+
+  - pattern_id: typescript_react_component
+    name: React Functional Component
+    language: typescript
+    framework: react
+    category: component
+    description: React component with hooks and TypeScript
+    intent_keywords: [component, react, ui, interface, hooks, useState]
+    token_cost: 550
+    complexity: moderate
+    template: |
+      import React, { useState, useEffect } from 'react';
+
+      interface {ComponentName}Props {
+          {props_definition}
+      }
+
+      interface {ComponentName}State {
+          {state_definition}
+      }
+
+      export const {ComponentName}: React.FC<{ComponentName}Props> = ({
+          {props_destructured}
+      }) => {
+          const [{state_name}, set{StateName}] = useState<{ComponentName}State>({
+              {initial_state}
+          });
+
+          useEffect(() => {
+              // {effect_description}
+              {effect_implementation}
+
+              return () => {
+                  // Cleanup
+                  {cleanup}
+              };
+          }, [{dependencies}]);
+
+          const handle{ActionName} = ({handler_params}): void => {
+              {handler_implementation}
+          };
+
+          return (
+              <div className="{css_class}">
+                  {jsx_content}
+              </div>
+          );
+      };
+
+      {ComponentName}.displayName = '{ComponentName}';
+
+  # === RUST PATTERNS ===
+
+  - pattern_id: rust_actix_handler
+    name: Actix-web Handler Function
+    language: rust
+    framework: actix
+    category: api
+    description: Actix-web HTTP handler with error handling
+    intent_keywords: [api, endpoint, handler, actix, web, route]
+    token_cost: 500
+    complexity: moderate
+    prerequisites:
+      - actix_web
+      - serde
+    template: |
+      use actix_web::{web, HttpResponse, Result, Error};
+      use serde::{Deserialize, Serialize};
+
+      #[derive(Debug, Deserialize)]
+      pub struct {RequestStruct} {
+          {request_fields}
+      }
+
+      #[derive(Debug, Serialize)]
+      pub struct {ResponseStruct} {
+          {response_fields}
+      }
+
+      #[derive(Debug, Serialize)]
+      pub struct ErrorResponse {
+          error: String,
+      }
+
+      pub async fn {handler_name}(
+          {params}: web::Json<{RequestStruct}>,
+          {dependencies}
+      ) -> Result<HttpResponse, Error> {
+          // {description}
+
+          {validation}
+
+          match {implementation} {
+              Ok(result) => {
+                  let response = {ResponseStruct} {
+                      {response_construction}
+                  };
+                  Ok(HttpResponse::Ok().json(response))
+              }
+              Err(e) => {
+                  log::error!("{handler_name} error: {:?}", e);
+                  Ok(HttpResponse::BadRequest().json(ErrorResponse {
+                      error: e.to_string(),
+                  }))
+              }
+          }
+      }
+
+      #[cfg(test)]
+      mod tests {
+          use super::*;
+
+          #[actix_rt::test]
+          async fn test_{handler_name}_success() {
+              // Test implementation
+              {test_body}
+          }
+      }
+
+    placeholders:
+      - name: handler_name
+        type: identifier
+        pattern: "^[a-z_][a-z0-9_]*$"
+      - name: RequestStruct
+        type: struct_name
+        pattern: "^[A-Z][a-zA-Z0-9]*$"
+      - name: ResponseStruct
+        type: struct_name
+
+  - pattern_id: rust_error_type
+    name: Custom Error Type with thiserror
+    language: rust
+    category: error
+    description: Custom error type using thiserror crate
+    intent_keywords: [error, custom error, error handling, thiserror]
+    token_cost: 350
+    complexity: simple
+    template: |
+      use thiserror::Error;
+
+      #[derive(Error, Debug)]
+      pub enum {ErrorName} {
+          #[error("Not found: {0}")]
+          NotFound(String),
+
+          #[error("Validation error: {0}")]
+          Validation(String),
+
+          #[error("Database error: {0}")]
+          Database(#[from] sqlx::Error),
+
+          #[error("IO error: {0}")]
+          Io(#[from] std::io::Error),
+
+          {custom_variants}
+      }
+
+      pub type Result<T> = std::result::Result<T, {ErrorName}>;
+
+      impl {ErrorName} {
+          pub fn not_found(msg: impl Into<String>) -> Self {
+              Self::NotFound(msg.into())
+          }
+
+          pub fn validation(msg: impl Into<String>) -> Self {
+              Self::Validation(msg.into())
+          }
+      }
+
+# === PATTERN METADATA ===
+
+pattern_statistics:
+  by_language:
+    python: 12
+    typescript: 10
+    rust: 8
+
+  by_category:
+    api: 10
+    crud: 5
+    test: 5
+    async: 4
+    error: 3
+    validation: 3
+
+  avg_token_cost: 475
+  total_uses: 0
+  success_rate: 0.85
+
+# === CONFIGURATION ===
+
+config:
+  auto_select_threshold: 0.75
+  require_confirmation_below: 0.60
+  max_patterns_per_intent: 3
+  enable_pattern_learning: true
+  pattern_cache_ttl_seconds: 3600

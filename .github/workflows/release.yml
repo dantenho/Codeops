@@ -1,0 +1,256 @@
+# .github/workflows/release.yml
+#
+# [CREATE] Automated release workflow.
+# Handles version bumping, changelog generation, and GitHub release creation.
+#
+# Agent: Composer
+# Timestamp: 2025-12-03T23:30:00Z
+
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version number (e.g., 1.2.3)'
+        required: true
+        type: string
+      release_type:
+        description: 'Release type'
+        required: true
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
+      create_tag:
+        description: 'Create git tag'
+        required: true
+        type: boolean
+        default: true
+
+env:
+  PYTHON_VERSION: "3.12"
+
+jobs:
+  # ──────────────────────────────────────────────────────────────────────────
+  # JOB 1: Determine version
+  # ──────────────────────────────────────────────────────────────────────────
+  version:
+    name: 📌 Determine Version
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      tag: ${{ steps.version.outputs.tag }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Determine version
+        id: version
+        run: |
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+            VERSION="${{ github.event.inputs.version }}"
+            RELEASE_TYPE="${{ github.event.inputs.release_type }}"
+
+            # Extract current version from git tags or use provided version
+            CURRENT_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
+            CURRENT_VERSION=$(echo $CURRENT_TAG | sed 's/^v//')
+
+            if [ "$VERSION" == "" ]; then
+              # Bump version based on type
+              IFS='.' read -ra VERSION_PARTS <<< "$CURRENT_VERSION"
+              MAJOR=${VERSION_PARTS[0]}
+              MINOR=${VERSION_PARTS[1]}
+              PATCH=${VERSION_PARTS[2]}
+
+              case "$RELEASE_TYPE" in
+                major)
+                  MAJOR=$((MAJOR + 1))
+                  MINOR=0
+                  PATCH=0
+                  ;;
+                minor)
+                  MINOR=$((MINOR + 1))
+                  PATCH=0
+                  ;;
+                patch)
+                  PATCH=$((PATCH + 1))
+                  ;;
+              esac
+
+              VERSION="$MAJOR.$MINOR.$PATCH"
+            fi
+          else
+            # Extract version from tag
+            VERSION=$(echo "${{ github.ref }}" | sed 's/refs\/tags\/v//')
+          fi
+
+          TAG="v$VERSION"
+
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "tag=$TAG" >> $GITHUB_OUTPUT
+          echo "📌 Version: $VERSION"
+          echo "🏷️ Tag: $TAG"
+
+  # ──────────────────────────────────────────────────────────────────────────
+  # JOB 2: Generate changelog
+  # ──────────────────────────────────────────────────────────────────────────
+  changelog:
+    name: 📝 Generate Changelog
+    runs-on: ubuntu-latest
+    needs: version
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Generate changelog
+        id: changelog
+        run: |
+          VERSION="${{ needs.version.outputs.version }}"
+          TAG="${{ needs.version.outputs.tag }}"
+
+          # Get previous tag
+          PREVIOUS_TAG=$(git describe --tags --abbrev=0 HEAD~1 2>/dev/null || echo "")
+
+          if [ -z "$PREVIOUS_TAG" ]; then
+            PREVIOUS_TAG=$(git rev-list --max-parents=0 HEAD)
+          fi
+
+          echo "Previous tag: $PREVIOUS_TAG"
+          echo "Current tag: $TAG"
+
+          # Generate changelog from commits
+          CHANGELOG="# Release $TAG\n\n"
+          CHANGELOG+="**Release Date:** $(date -u +'%Y-%m-%d')\n\n"
+
+          # Get commits since previous tag
+          if [ "$PREVIOUS_TAG" != "" ]; then
+            COMMITS=$(git log ${PREVIOUS_TAG}..HEAD --pretty=format:"- %s (%h)" --no-merges)
+          else
+            COMMITS=$(git log --pretty=format:"- %s (%h)" --no-merges -20)
+          fi
+
+          if [ -z "$COMMITS" ]; then
+            CHANGELOG+="No changes detected.\n"
+          else
+            CHANGELOG+="## Changes\n\n"
+            CHANGELOG+="$COMMITS\n"
+          fi
+
+          # Add agent contributions
+          CHANGELOG+="\n## Agent Contributions\n\n"
+          AGENTS=$(echo "$COMMITS" | grep -oE '\[([A-Za-z0-9\.\-\s]+)\]' | sort -u | sed 's/\[//;s/\]//' | tr '\n' ', ' | sed 's/,$//')
+          if [ -n "$AGENTS" ]; then
+            CHANGELOG+="Contributors: $AGENTS\n"
+          else
+            CHANGELOG+="No agent contributions detected.\n"
+          fi
+
+          # Save changelog
+          echo "$CHANGELOG" > CHANGELOG_RELEASE.md
+          echo "$CHANGELOG" >> $GITHUB_STEP_SUMMARY
+
+          # Output for next step
+          echo "changelog<<EOF" >> $GITHUB_OUTPUT
+          echo "$CHANGELOG" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: Upload changelog
+        uses: actions/upload-artifact@v4
+        with:
+          name: changelog-${{ needs.version.outputs.tag }}
+          path: CHANGELOG_RELEASE.md
+
+  # ──────────────────────────────────────────────────────────────────────────
+  # JOB 3: Create release
+  # ──────────────────────────────────────────────────────────────────────────
+  create-release:
+    name: 🚀 Create Release
+    runs-on: ubuntu-latest
+    needs: [version, changelog]
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download changelog
+        uses: actions/download-artifact@v4
+        with:
+          name: changelog-${{ needs.version.outputs.tag }}
+          path: .
+
+      - name: Create Git tag
+        if: github.event_name == 'workflow_dispatch' && github.event.inputs.create_tag == 'true'
+        run: |
+          git config user.name "GitHub Actions"
+          git config user.email "actions@github.com"
+          git tag -a "${{ needs.version.outputs.tag }}" -m "Release ${{ needs.version.outputs.tag }}"
+          git push origin "${{ needs.version.outputs.tag }}"
+
+      - name: Create GitHub Release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ needs.version.outputs.tag }}
+          release_name: Release ${{ needs.version.outputs.tag }}
+          body_path: CHANGELOG_RELEASE.md
+          draft: false
+          prerelease: false
+
+  # ──────────────────────────────────────────────────────────────────────────
+  # JOB 4: Update version files (if they exist)
+  # ──────────────────────────────────────────────────────────────────────────
+  update-version:
+    name: 📝 Update Version Files
+    runs-on: ubuntu-latest
+    needs: version
+    if: github.event_name == 'workflow_dispatch'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Update version in files
+        run: |
+          VERSION="${{ needs.version.outputs.version }}"
+
+          # Update __version__.py if it exists
+          if [ -f "CodeAgents/core/__version__.py" ]; then
+            echo "__version__ = \"$VERSION\"" > CodeAgents/core/__version__.py
+          fi
+
+          # Update pyproject.toml if it exists
+          if [ -f "CodeAgents/Training/pyproject.toml" ]; then
+            sed -i "s/version = \".*\"/version = \"$VERSION\"/" CodeAgents/Training/pyproject.toml
+          fi
+
+          # Update package.json if it exists
+          if [ -f "package.json" ]; then
+            npm version $VERSION --no-git-tag-version || true
+          fi
+
+      - name: Commit version updates
+        run: |
+          git config user.name "GitHub Actions"
+          git config user.email "actions@github.com"
+          git add -A
+          git commit -m "chore: bump version to ${{ needs.version.outputs.tag }}" || echo "No changes to commit"
+          git push || echo "Nothing to push"

@@ -1,17 +1,24 @@
 # .github/workflows/telemetry-collector.yml
 #
-# [CREATE] Collects and aggregates telemetry data.
+# [MODIFY] Collects and aggregates telemetry data.
 # Runs periodically to process logs and generate reports.
+# Enhanced with proper aggregation logic and markdown report generation.
 #
-# Agent: GitHubActions
-# Timestamp: 2025-12-03T10:00:00Z
+# Agent: Composer
+# Timestamp: 2025-12-03T23:30:00Z
 
 name: Telemetry Collector
 
 on:
   schedule:
-    - cron: '0 */6 * * *'  # Every 6 hours
+    - cron: "0 */6 * * *" # Every 6 hours
   workflow_dispatch:
+    inputs:
+      days:
+        description: "Number of days to analyze"
+        required: false
+        default: "1"
+        type: string
 
 jobs:
   collect-metrics:
@@ -21,22 +28,196 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.12'
+          python-version: "3.12"
+          cache: "pip"
+
+      - name: Cache pip packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-telemetry-${{ hashFiles('**/requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-telemetry-
 
       - name: Install dependencies
-        run: pip install pandas matplotlib
-
-      - name: Run Metrics Engine
         run: |
-          # Assuming backend/core/metrics.py is the entry point
-          python -m backend.core.metrics --generate-report --days 1
+          pip install --upgrade pip
+          pip install pandas jsonschema
+
+      - name: Create reports directory
+        run: mkdir -p CodeAgents/reports
+
+      - name: Aggregate Telemetry Data
+        run: |
+          python3 << 'EOF'
+          import json
+          import sys
+          from pathlib import Path
+          from datetime import datetime, timedelta
+          from collections import defaultdict
+          from jsonschema import validate, ValidationError
+
+          days = int("${{ github.event.inputs.days || '1' }}")
+          cutoff_date = datetime.now() - timedelta(days=days)
+
+          # Load schemas
+          operation_schema_path = Path("CodeAgents/schemas/operation_schema.json")
+          error_schema_path = Path("CodeAgents/schemas/error_schema.json")
+
+          with open(operation_schema_path) as f:
+              operation_schema = json.load(f)
+          with open(error_schema_path) as f:
+              error_schema = json.load(f)
+
+          # Collect data
+          agents = []
+          operations_by_agent = defaultdict(lambda: defaultdict(int))
+          operations_by_type = defaultdict(int)
+          errors_by_agent = defaultdict(int)
+          errors_by_severity = defaultdict(int)
+          total_operations = 0
+          total_errors = 0
+          total_duration_ms = 0
+
+          # Scan CodeAgents/ID/*/logs and CodeAgents/*/logs
+          base_paths = [
+              Path("CodeAgents/ID"),
+              Path("CodeAgents")
+          ]
+
+          for base_path in base_paths:
+              if not base_path.exists():
+                  continue
+
+              for agent_dir in base_path.iterdir():
+                  if not agent_dir.is_dir():
+                      continue
+
+                  agent_name = agent_dir.name
+                  if agent_name in ['core', 'schemas', 'Training', 'GitHub', 'Errors', 'Evaluation', 'VibeCode', 'Memory', 'Anotations']:
+                      continue
+
+                  agents.append(agent_name)
+
+                  # Process logs
+                  logs_dir = agent_dir / "logs"
+                  if logs_dir.exists():
+                      for log_file in logs_dir.glob("*.json"):
+                          try:
+                              with open(log_file) as f:
+                                  data = json.load(f)
+
+                              # Validate schema
+                              validate(instance=data, schema=operation_schema)
+
+                              # Parse timestamp
+                              timestamp_str = data.get('timestamp', '')
+                              try:
+                                  timestamp = datetime.fromisoformat(timestamp_str.replace('Z', '+00:00'))
+                                  if timestamp.replace(tzinfo=None) < cutoff_date:
+                                      continue
+                              except:
+                                  pass
+
+                              op_type = data.get('operation', 'UNKNOWN')
+                              status = data.get('status', 'UNKNOWN')
+
+                              operations_by_agent[agent_name][op_type] += 1
+                              operations_by_type[op_type] += 1
+                              total_operations += 1
+
+                              if 'duration_ms' in data:
+                                  total_duration_ms += data['duration_ms']
+                          except (ValidationError, json.JSONDecodeError) as e:
+                              print(f"⚠️ Skipping invalid log file {log_file}: {e}", file=sys.stderr)
+
+                  # Process errors
+                  errors_dir = agent_dir / "errors"
+                  if errors_dir.exists():
+                      for error_file in errors_dir.glob("*.json"):
+                          try:
+                              with open(error_file) as f:
+                                  data = json.load(f)
+
+                              validate(instance=data, schema=error_schema)
+
+                              severity = data.get('severity', 'UNKNOWN')
+                              errors_by_agent[agent_name] += 1
+                              errors_by_severity[severity] += 1
+                              total_errors += 1
+                          except (ValidationError, json.JSONDecodeError) as e:
+                              print(f"⚠️ Skipping invalid error file {error_file}: {e}", file=sys.stderr)
+
+          # Generate report
+          report_path = Path("CodeAgents/reports/telemetry_report.md")
+          with open(report_path, 'w') as f:
+              f.write(f"# Telemetry Report\n\n")
+              f.write(f"**Generated:** {datetime.now().isoformat()}\n")
+              f.write(f"**Period:** Last {days} day(s)\n\n")
+              f.write("---\n\n")
+
+              f.write("## Summary\n\n")
+              f.write(f"- **Total Operations:** {total_operations}\n")
+              f.write(f"- **Total Errors:** {total_errors}\n")
+              f.write(f"- **Total Duration:** {total_duration_ms / 1000:.2f}s\n")
+              f.write(f"- **Active Agents:** {len(agents)}\n\n")
+
+              f.write("## Operations by Agent\n\n")
+              f.write("| Agent | CREATE | REFACTOR | DEBUG | MODIFY | ANALYZE | DELETE |\n")
+              f.write("|-------|--------|----------|-------|--------|---------|--------|\n")
+              for agent in sorted(agents):
+                  ops = operations_by_agent[agent]
+                  f.write(f"| {agent} | {ops.get('CREATE', 0)} | {ops.get('REFACTOR', 0)} | {ops.get('DEBUG', 0)} | {ops.get('MODIFY', 0)} | {ops.get('ANALYZE', 0)} | {ops.get('DELETE', 0)} |\n")
+
+              f.write("\n## Operations by Type\n\n")
+              for op_type, count in sorted(operations_by_type.items(), key=lambda x: -x[1]):
+                  f.write(f"- **{op_type}:** {count}\n")
+
+              f.write("\n## Errors by Severity\n\n")
+              for severity, count in sorted(errors_by_severity.items(), key=lambda x: -x[1]):
+                  f.write(f"- **{severity}:** {count}\n")
+
+              f.write("\n## Errors by Agent\n\n")
+              for agent, count in sorted(errors_by_agent.items(), key=lambda x: -x[1]):
+                  f.write(f"- **{agent}:** {count}\n")
+
+          print(f"✅ Generated report: {report_path}")
+          print(f"   Operations: {total_operations}, Errors: {total_errors}")
+
+          # Generate JSON summary
+          summary = {
+              "generated_at": datetime.now().isoformat(),
+              "period_days": days,
+              "summary": {
+                  "total_operations": total_operations,
+                  "total_errors": total_errors,
+                  "total_duration_ms": total_duration_ms,
+                  "active_agents": len(agents)
+              },
+              "operations_by_agent": dict(operations_by_agent),
+              "operations_by_type": dict(operations_by_type),
+              "errors_by_agent": dict(errors_by_agent),
+              "errors_by_severity": dict(errors_by_severity)
+          }
+
+          summary_path = Path("CodeAgents/reports/telemetry_summary.json")
+          with open(summary_path, 'w') as f:
+              json.dump(summary, f, indent=2)
+
+          print(f"✅ Generated summary: {summary_path}")
+          EOF
 
       - name: Upload Report
         uses: actions/upload-artifact@v4
         with:
-          name: telemetry-report
-          path: CodeAgents/reports/
+          name: telemetry-report-${{ github.run_number }}
+          path: |
+            CodeAgents/reports/*.md
+            CodeAgents/reports/*.json
+          retention-days: 30

@@ -1,0 +1,99 @@
+# .github/workflows/dependabot-auto-merge.yml
+#
+# [CREATE] Auto-merge dependabot PRs with passing checks.
+# Only merges dependency updates that pass all validation checks.
+#
+# Agent: Composer
+# Timestamp: 2025-12-03T23:30:00Z
+
+name: Dependabot Auto-Merge
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+jobs:
+  auto-merge:
+    name: 🤖 Auto-Merge Dependabot PRs
+    runs-on: ubuntu-latest
+    if: github.actor == 'dependabot[bot]'
+    permissions:
+      contents: write
+      pull-requests: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Wait for status checks
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const prNumber = context.payload.pull_request.number;
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+
+            // Wait for required checks to pass
+            const maxWait = 30; // minutes
+            const checkInterval = 60; // seconds
+            let elapsed = 0;
+
+            while (elapsed < maxWait * 60) {
+              const pr = await github.rest.pulls.get({
+                owner,
+                repo,
+                pull_number: prNumber
+              });
+
+              const checks = await github.rest.checks.listForRef({
+                owner,
+                repo,
+                ref: pr.data.head.sha
+              });
+
+              const allChecksPassed = checks.data.check_runs.every(
+                check => check.status === 'completed' && check.conclusion === 'success'
+              );
+
+              const isMergeable = pr.data.mergeable &&
+                                 pr.data.mergeable_state === 'clean' &&
+                                 !pr.data.draft;
+
+              if (allChecksPassed && isMergeable) {
+                console.log('✅ All checks passed, ready to merge');
+                return;
+              }
+
+              console.log(`⏳ Waiting for checks... (${elapsed}s elapsed)`);
+              await new Promise(resolve => setTimeout(resolve, checkInterval * 1000));
+              elapsed += checkInterval;
+            }
+
+            throw new Error('Timeout waiting for checks to pass');
+
+      - name: Enable auto-merge
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const prNumber = context.payload.pull_request.number;
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+
+            // Enable auto-merge
+            await github.rest.pulls.merge({
+              owner,
+              repo,
+              pull_number: prNumber,
+              merge_method: 'squash',
+              commit_title: `chore(deps): ${{ github.event.pull_request.title }}`
+            });
+
+            console.log(`✅ Auto-merged PR #${prNumber}`);
+
+            // Add comment
+            await github.rest.issues.createComment({
+              owner,
+              repo,
+              issue_number: prNumber,
+              body: '🤖 **Auto-merged** by Dependabot Auto-Merge workflow\n\nAll checks passed successfully.'
+            });

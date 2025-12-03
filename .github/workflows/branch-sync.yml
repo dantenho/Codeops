@@ -1,11 +1,12 @@
 # .github/workflows/branch-sync.yml
 #
-# [CREATE] Synchronizes agent branches with main.
+# [MODIFY] Synchronizes agent branches with main.
 # Ensures that all agent branches are kept up-to-date with the latest
 # changes from the main branch to avoid drift.
+# Enhanced with PR creation, error handling, and all agent support.
 #
-# Agent: GitHubActions
-# Timestamp: 2025-12-03T10:00:00Z
+# Agent: Composer
+# Timestamp: 2025-12-03T23:30:00Z
 
 name: Branch Synchronization
 
@@ -13,7 +14,8 @@ on:
   push:
     branches: [main]
   schedule:
-    - cron: '0 0 * * *'  # Daily at midnight
+    - cron: "0 0 * * *" # Daily at midnight
+  workflow_dispatch:
 
 jobs:
   sync-branches:
@@ -21,6 +23,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+      pull-requests: write
 
     steps:
       - name: Checkout code
@@ -34,19 +37,160 @@ jobs:
           git config user.name "GitHub Actions"
           git config user.email "actions@github.com"
 
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
       - name: Sync Agent Branches
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           # List of active agent branches to keep in sync
-          AGENTS=("agent/GrokIA" "agent/GeminiFlash25" "agent/GeminiPro25" "agent/GeminiPro30" "agent/Jules" "agent/ClaudeCode" "agent/Composer")
+          AGENTS=(
+            "agent/GrokIA"
+            "agent/GeminiFlash25"
+            "agent/GeminiPro25"
+            "agent/GeminiPro30"
+            "agent/Jules"
+            "agent/ClaudeCode"
+            "agent/Composer"
+            "agent/DeepSeekR1"
+            "agent/GPT-5.1-Codex"
+            "agent/Antigravity"
+            "agent/Z.AI"
+          )
+
+          FAILED_SYNCS=()
+          SUCCESSFUL_SYNCS=()
 
           for BRANCH in "${AGENTS[@]}"; do
+            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+            echo "Processing: $BRANCH"
+            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+
             # Check if branch exists remotely
-            if git ls-remote --exit-code --heads origin "$BRANCH"; then
-              echo "Syncing $BRANCH..."
-              git checkout "$BRANCH"
-              git merge origin/main --no-edit -m "Merge main into $BRANCH [Auto-Sync]"
-              git push origin "$BRANCH"
-            else
-              echo "Branch $BRANCH does not exist, skipping."
+            if ! git ls-remote --exit-code --heads origin "$BRANCH" 2>/dev/null; then
+              echo "⚠️ Branch $BRANCH does not exist remotely, skipping."
+              continue
             fi
+
+            # Fetch latest changes
+            git fetch origin "$BRANCH" || {
+              echo "❌ Failed to fetch $BRANCH"
+              FAILED_SYNCS+=("$BRANCH")
+              continue
+            }
+
+            # Checkout branch
+            git checkout "$BRANCH" || {
+              echo "❌ Failed to checkout $BRANCH"
+              FAILED_SYNCS+=("$BRANCH")
+              continue
+            }
+
+            # Check if merge is needed
+            if git merge-base --is-ancestor origin/main "$BRANCH" 2>/dev/null; then
+              echo "✅ $BRANCH is already up-to-date with main"
+              SUCCESSFUL_SYNCS+=("$BRANCH")
+              continue
+            fi
+
+            # Attempt merge
+            if git merge origin/main --no-edit -m "Merge main into $BRANCH [Auto-Sync]" 2>&1; then
+              echo "✅ Successfully merged main into $BRANCH"
+
+              # Push changes
+              if git push origin "$BRANCH" 2>&1; then
+                echo "✅ Successfully pushed $BRANCH"
+                SUCCESSFUL_SYNCS+=("$BRANCH")
+              else
+                echo "❌ Failed to push $BRANCH"
+                FAILED_SYNCS+=("$BRANCH")
+              fi
+            else
+              echo "❌ Merge conflict detected for $BRANCH"
+
+              # Create PR for manual resolution
+              python3 << EOF
+          import os
+          import subprocess
+          import json
+
+          branch = "$BRANCH"
+          repo = os.environ.get("GITHUB_REPOSITORY", "").split("/")
+          if len(repo) != 2:
+              print("Could not determine repository")
+              exit(1)
+
+          owner, repo_name = repo
+          token = os.environ.get("GITHUB_TOKEN", "")
+
+          # Check if PR already exists
+          result = subprocess.run(
+              ["gh", "pr", "list", "--head", branch, "--base", "main", "--json", "number"],
+              capture_output=True,
+              text=True
+          )
+
+          if result.returncode == 0 and result.stdout.strip():
+              prs = json.loads(result.stdout)
+              if prs:
+                  print(f"PR already exists: #{prs[0]['number']}")
+                  exit(0)
+
+          # Create PR
+          title = f"Sync {branch} with main [Auto-Generated]"
+          body = f"""## Auto-Sync PR
+
+          This PR was automatically created because merge conflicts were detected when syncing \`{branch}\` with \`main\`.
+
+          **Action Required:** Please resolve the conflicts manually and merge this PR.
+
+          ### Conflicts Detected
+          - Merge conflicts between \`main\` and \`{branch}\`
+          - Automatic merge failed
+
+          ### Next Steps
+          1. Review the conflicts
+          2. Resolve them manually
+          3. Merge this PR when ready
+          """
+
+          subprocess.run([
+              "gh", "pr", "create",
+              "--title", title,
+              "--body", body,
+              "--head", branch,
+              "--base", "main",
+              "--label", "auto-sync,conflict-resolution"
+          ])
+          EOF
+
+              FAILED_SYNCS+=("$BRANCH")
+            fi
+
+            # Return to main for next iteration
+            git checkout main 2>/dev/null || true
           done
+
+          # Summary
+          echo ""
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo "📊 Sync Summary"
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo "✅ Successful: ${#SUCCESSFUL_SYNCS[@]}"
+          for sync in "${SUCCESSFUL_SYNCS[@]}"; do
+            echo "   - $sync"
+          done
+          echo ""
+          echo "❌ Failed: ${#FAILED_SYNCS[@]}"
+          for sync in "${FAILED_SYNCS[@]}"; do
+            echo "   - $sync"
+          done
+
+          # Exit with error if any syncs failed
+          if [ ${#FAILED_SYNCS[@]} -gt 0 ]; then
+            echo "::warning::Some branches failed to sync. Check PRs for conflict resolution."
+            exit 0  # Don't fail the workflow, just warn
+          fi

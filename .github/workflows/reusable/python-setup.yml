@@ -1,0 +1,98 @@
+# .github/workflows/reusable/python-setup.yml
+#
+# [CREATE] Reusable workflow for Python environment setup.
+# Provides consistent Python setup with UV, caching, and dependency installation.
+#
+# Agent: Composer
+# Timestamp: 2025-12-03T23:30:00Z
+
+name: Python Setup
+
+on:
+  workflow_call:
+    inputs:
+      python-version:
+        description: 'Python version to use'
+        required: false
+        default: '3.12'
+        type: string
+      cache-key:
+        description: 'Additional cache key suffix'
+        required: false
+        default: ''
+        type: string
+      install-uv:
+        description: 'Install UV package manager'
+        required: false
+        default: true
+        type: boolean
+      requirements-files:
+        description: 'Comma-separated list of requirements files to install'
+        required: false
+        default: ''
+        type: string
+    outputs:
+      python-version:
+        description: 'Python version used'
+        value: ${{ jobs.setup.outputs.python-version }}
+      cache-hit:
+        description: 'Whether cache was hit'
+        value: ${{ jobs.setup.outputs.cache-hit }}
+
+jobs:
+  setup:
+    name: 🐍 Setup Python Environment
+    runs-on: ubuntu-latest
+    outputs:
+      python-version: ${{ steps.setup.outputs.version }}
+      cache-hit: ${{ steps.cache.outputs.cache-hit }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        id: setup
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ inputs.python-version }}
+          cache: 'pip'
+
+      - name: Cache UV packages
+        if: inputs.install-uv == true
+        id: cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/uv
+          key: ${{ runner.os }}-uv-${{ inputs.python-version }}-${{ inputs.cache-key }}-${{ hashFiles('**/requirements.txt', '**/pyproject.toml') }}
+          restore-keys: |
+            ${{ runner.os }}-uv-${{ inputs.python-version }}-${{ inputs.cache-key }}-
+            ${{ runner.os }}-uv-${{ inputs.python-version }}-
+
+      - name: Install UV
+        if: inputs.install-uv == true
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
+
+      - name: Install dependencies
+        if: inputs.requirements-files != ''
+        run: |
+          IFS=',' read -ra FILES <<< "${{ inputs.requirements-files }}"
+          for file in "${FILES[@]}"; do
+            if [ -f "$file" ]; then
+              echo "Installing dependencies from $file..."
+              if [ "${{ inputs.install-uv }}" == "true" ]; then
+                uv pip install --system -r "$file"
+              else
+                pip install -r "$file"
+              fi
+            else
+              echo "⚠️ Requirements file not found: $file"
+            fi
+          done
+
+      - name: Output Python version
+        run: |
+          echo "version=$(python --version | cut -d' ' -f2)" >> $GITHUB_OUTPUT
+          python --version

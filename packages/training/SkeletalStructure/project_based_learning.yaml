@@ -1,0 +1,136 @@
+projects:
+  level_1:
+    simple_calculator:
+      title: "Command-Line Calculator"
+      description: "Build a calculator that handles basic arithmetic operations"
+      duration_minutes: 45
+      concepts_covered:
+        - variables
+        - functions
+        - input_output
+        - error_handling
+      learning_objectives:
+        - Parse user input safely
+        - Implement mathematical operations
+        - Handle edge cases and errors
+        - Create reusable functions
+      deliverables:
+        - calculator.py with all functions
+        - Test cases for edge cases
+        - Input validation
+      difficulty: 1
+      prerequisites: ["variables", "functions", "control_flow"]
+
+    todo_list_app:
+      title: "Terminal Todo List"
+      description: "Create a command-line todo list manager"
+      duration_minutes: 60
+      concepts_covered:
+        - data_structures
+        - file_io
+        - functions
+        - control_flow
+      learning_objectives:
+        - Design data structures for tasks
+        - Implement CRUD operations
+        - Persist data to files
+        - Handle user commands
+      deliverables:
+        - todo.py with full functionality
+        - Data persistence with JSON
+        - Command-line interface
+        - Input validation and error handling
+      difficulty: 2
+      prerequisites: ["lists", "dictionaries", "file_operations"]
+
+  level_2:
+    text_analyzer:
+      title: "Text File Analyzer"
+      description: "Analyze text files for statistics and patterns"
+      duration_minutes: 75
+      concepts_covered:
+        - file_processing
+        - string_manipulation
+        - data_structures
+        - algorithms
+      learning_objectives:
+        - Read and process large files efficiently
+        - Implement text analysis algorithms
+        - Use appropriate data structures
+        - Generate formatted reports
+      deliverables:
+        - analyzer.py with analysis functions
+        - Performance optimization for large files
+        - Multiple output formats (console/table)
+        - Comprehensive test suite
+      difficulty: 3
+      prerequisites: ["file_io", "strings", "dictionaries", "loops"]
+
+  level_3:
+    web_scraper:
+      title: "Educational Web Scraper"
+      description: "Build a respectful web scraper for educational content"
+      duration_minutes: 120
+      concepts_covered:
+        - networking
+        - parsing
+        - concurrency
+        - error_handling
+      learning_objectives:
+        - Implement HTTP requests safely
+        - Parse HTML/XML content
+        - Handle rate limiting and robots.txt
+        - Design concurrent processing
+      deliverables:
+        - scraper.py with respectful scraping
+        - Rate limiting and error recovery
+        - Data extraction and storage
+        - Configuration management
+      difficulty: 5
+      prerequisites:
+        ["http_requests", "html_parsing", "multithreading", "config_files"]
+
+evaluation_criteria:
+  code_quality:
+    weight: 0.25
+    metrics:
+      readability: "Code is well-structured and easy to understand"
+      documentation: "Functions and classes are properly documented"
+      type_hints: "Appropriate type hints used throughout"
+      naming: "Variables and functions have descriptive names"
+
+  functionality:
+    weight: 0.30
+    metrics:
+      requirements: "All project requirements are met"
+      edge_cases: "Edge cases and error conditions handled"
+      testing: "Comprehensive test coverage"
+      user_experience: "Interface is user-friendly"
+
+  technical_excellence:
+    weight: 0.25
+    metrics:
+      algorithms: "Appropriate algorithms and data structures chosen"
+      performance: "Code performs efficiently"
+      architecture: "Good separation of concerns and modularity"
+      best_practices: "Industry best practices followed"
+
+  learning_outcomes:
+    weight: 0.20
+    metrics:
+      concept_application: "Concepts applied correctly in context"
+      problem_solving: "Creative solutions to complex problems"
+      code_organization: "Logical code organization and structure"
+      reflection: "Learning insights documented and reflected upon"
+
+completion_bonuses:
+  perfect_score: 1000
+  early_completion: 500
+  peer_review: 300
+  innovative_solution: 400
+
+adaptive_difficulty:
+  success_threshold: 0.8
+  failure_threshold: 0.6
+  streak_bonus: 1.2
+  plateau_detection: 3

@@ -1,0 +1,137 @@
+# .github/workflows/reusable/telemetry-validator.yml
+#
+# [CREATE] Reusable workflow for telemetry validation.
+# Validates telemetry JSON files against schemas.
+#
+# Agent: Composer
+# Timestamp: 2025-12-03T23:30:00Z
+
+name: Telemetry Validator
+
+on:
+  workflow_call:
+    inputs:
+      agent-name:
+        description: 'Agent name to validate telemetry for'
+        required: true
+        type: string
+      schema-path:
+        description: 'Path to schema directory'
+        required: false
+        default: 'CodeAgents/schemas'
+        type: string
+    outputs:
+      validated-count:
+        description: 'Number of files validated'
+        value: ${{ jobs.validate.outputs.count }}
+      error-count:
+        description: 'Number of validation errors'
+        value: ${{ jobs.validate.outputs.errors }}
+
+jobs:
+  validate:
+    name: 📊 Validate Telemetry
+    runs-on: ubuntu-latest
+    outputs:
+      count: ${{ steps.validate.outputs.count }}
+      errors: ${{ steps.validate.outputs.errors }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install jsonschema
+
+      - name: Validate telemetry files
+        id: validate
+        run: |
+          python3 << 'EOF'
+          import json
+          import sys
+          from pathlib import Path
+          from jsonschema import validate, ValidationError
+
+          agent_name = "${{ inputs.agent-name }}"
+          schema_path = Path("${{ inputs.schema-path }}")
+
+          # Load schemas
+          operation_schema_path = schema_path / "operation_schema.json"
+          error_schema_path = schema_path / "error_schema.json"
+
+          if not operation_schema_path.exists():
+              print(f"::error::Schema file not found: {operation_schema_path}")
+              sys.exit(1)
+
+          if not error_schema_path.exists():
+              print(f"::error::Schema file not found: {error_schema_path}")
+              sys.exit(1)
+
+          with open(operation_schema_path) as f:
+              operation_schema = json.load(f)
+
+          with open(error_schema_path) as f:
+              error_schema = json.load(f)
+
+          # Check both CodeAgents/ID/AgentName and CodeAgents/AgentName patterns
+          base_paths = [
+              Path(f"CodeAgents/ID/{agent_name}"),
+              Path(f"CodeAgents/{agent_name}")
+          ]
+
+          validated_count = 0
+          error_count = 0
+
+          # Validate logs
+          for base_path in base_paths:
+              if not base_path.exists():
+                  continue
+
+              logs_dir = base_path / "logs"
+              if logs_dir.exists():
+                  for log_file in logs_dir.glob("*.json"):
+                      try:
+                          with open(log_file) as f:
+                              data = json.load(f)
+                          validate(instance=data, schema=operation_schema)
+                          validated_count += 1
+                          print(f"✅ {log_file}")
+                      except ValidationError as e:
+                          error_count += 1
+                          print(f"::error file={log_file}::ValidationError: {e.message}")
+                      except json.JSONDecodeError as e:
+                          error_count += 1
+                          print(f"::error file={log_file}::Invalid JSON: {str(e)}")
+
+              errors_dir = base_path / "errors"
+              if errors_dir.exists():
+                  for error_file in errors_dir.glob("*.json"):
+                      try:
+                          with open(error_file) as f:
+                              data = json.load(f)
+                          validate(instance=data, schema=error_schema)
+                          validated_count += 1
+                          print(f"✅ {error_file}")
+                      except ValidationError as e:
+                          error_count += 1
+                          print(f"::error file={error_file}::ValidationError: {e.message}")
+                      except json.JSONDecodeError as e:
+                          error_count += 1
+                          print(f"::error file={error_file}::Invalid JSON: {str(e)}")
+
+          print(f"\n📊 Validated {validated_count} file(s), {error_count} error(s)")
+
+          # Set outputs
+          print(f"::set-output name=count::{validated_count}")
+          print(f"::set-output name=errors::{error_count}")
+
+          if error_count > 0:
+              sys.exit(1)
+          EOF

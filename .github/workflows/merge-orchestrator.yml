@@ -1,15 +1,18 @@
 # .github/workflows/merge-orchestrator.yml
 #
-# [CREATE] Orchestrates the merge process for agent PRs.
+# [MODIFY] Orchestrates the merge process for agent PRs.
 # Ensures that merges only happen when all checks pass and handles
 # automatic merging for trusted agents on safe paths.
+# Enhanced with proper PR detection and GitHub API integration.
 #
-# Agent: GitHubActions
-# Timestamp: 2025-12-03T10:00:00Z
+# Agent: Composer
+# Timestamp: 2025-12-03T23:30:00Z
 
 name: Merge Orchestrator
 
 on:
+  pull_request:
+    types: [labeled, synchronize, opened, reopened]
   workflow_run:
     workflows: ["Agent Compliance Validation"]
     types:
@@ -17,77 +20,244 @@ on:
 
 jobs:
   # ──────────────────────────────────────────────────────────────────────────
-  # JOB 1: Check validation status
+  # JOB 1: Check validation status and identify PR
   # ──────────────────────────────────────────────────────────────────────────
   check-validation:
     name: ✅ Check Validation
     runs-on: ubuntu-latest
-    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    if: |
+      github.event_name == 'pull_request' ||
+      (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success')
     outputs:
       pr_number: ${{ steps.pr.outputs.number }}
       agent: ${{ steps.pr.outputs.agent }}
+      should_merge: ${{ steps.pr.outputs.should_merge }}
 
     steps:
-      - name: Download artifact
-        uses: actions/github-script@v6
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Identify PR and Agent
+        id: pr
+        uses: actions/github-script@v7
         with:
           script: |
-            // Logic to get PR number from the triggering workflow
-            // This is complex in actions, simplified for template
-            return true
+            let prNumber;
+            let agent = 'Unknown';
 
-      - name: Identify PR
-        id: pr
-        run: |
-          echo "number=123" >> $GITHUB_OUTPUT
-          echo "agent=GrokIA" >> $GITHUB_OUTPUT
+            if (context.eventName === 'pull_request') {
+              prNumber = context.payload.pull_request.number;
+              // Extract agent from branch name
+              const branchName = context.payload.pull_request.head.ref;
+              const match = branchName.match(/^agent\/([^/]+)/);
+              if (match) {
+                agent = match[1];
+              }
+            } else if (context.eventName === 'workflow_run') {
+              // Get PRs associated with the workflow run
+              const workflowRun = context.payload.workflow_run;
+              const commits = await github.rest.repos.listCommits({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                sha: workflowRun.head_sha
+              });
+
+              if (commits.data.length > 0) {
+                const commitSha = commits.data[0].sha;
+                const prs = await github.rest.repos.listPullRequestsAssociatedWithCommit({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  commit_sha: commitSha
+                });
+
+                if (prs.data.length > 0) {
+                  prNumber = prs.data[0].number;
+                  const branchName = prs.data[0].head.ref;
+                  const match = branchName.match(/^agent\/([^/]+)/);
+                  if (match) {
+                    agent = match[1];
+                  }
+                }
+              }
+            }
+
+            const shouldMerge = context.payload.pull_request?.labels?.some(
+              label => label.name === 'auto-merge'
+            ) || false;
+
+            core.setOutput('number', prNumber || '');
+            core.setOutput('agent', agent);
+            core.setOutput('should_merge', shouldMerge ? 'true' : 'false');
+
+            console.log(`PR #${prNumber}, Agent: ${agent}, Should Merge: ${shouldMerge}`);
 
   # ──────────────────────────────────────────────────────────────────────────
-  # JOB 2: Auto-merge (if safe)
+  # JOB 2: Check PR status and requirements
+  # ──────────────────────────────────────────────────────────────────────────
+  check-pr-status:
+    name: 🔍 Check PR Status
+    runs-on: ubuntu-latest
+    needs: check-validation
+    if: needs.check-validation.outputs.pr_number != ''
+    outputs:
+      ready_to_merge: ${{ steps.check.outputs.ready }}
+      merge_method: ${{ steps.check.outputs.method }}
+
+    steps:
+      - name: Check PR requirements
+        id: check
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const prNumber = ${{ needs.check-validation.outputs.pr_number }};
+            const agent = "${{ needs.check-validation.outputs.agent }}";
+            const shouldMerge = "${{ needs.check-validation.outputs.should_merge }}" === 'true';
+
+            const pr = await github.rest.pulls.get({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: prNumber
+            });
+
+            const checks = await github.rest.checks.listForRef({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              ref: pr.data.head.sha
+            });
+
+            // Check if all required checks pass
+            const requiredChecks = ['Agent Compliance Validation'];
+            const allChecksPassed = checks.data.check_runs.every(
+              check => check.status === 'completed' && check.conclusion === 'success'
+            );
+
+            // Check if PR is mergeable
+            const isMergeable = pr.data.mergeable &&
+                               pr.data.mergeable_state === 'clean' &&
+                               !pr.data.draft &&
+                               allChecksPassed;
+
+            // Determine merge method based on agent and PR size
+            let mergeMethod = 'squash';
+            const trustedAgents = ['GrokIA', 'GeminiPro30', 'Composer', 'ClaudeCode'];
+            const largeChangeThreshold = 50; // files changed
+
+            if (pr.data.changed_files > largeChangeThreshold) {
+              mergeMethod = 'merge'; // Preserve history for large changes
+            } else if (trustedAgents.includes(agent) && shouldMerge) {
+              mergeMethod = 'squash'; // Clean history for trusted agents
+            }
+
+            core.setOutput('ready', isMergeable && shouldMerge ? 'true' : 'false');
+            core.setOutput('method', mergeMethod);
+
+            console.log(`PR #${prNumber}: Ready=${isMergeable}, Method=${mergeMethod}`);
+
+  # ──────────────────────────────────────────────────────────────────────────
+  # JOB 3: Auto-merge (if safe)
   # ──────────────────────────────────────────────────────────────────────────
   auto-merge:
     name: 🔄 Auto Merge
     runs-on: ubuntu-latest
-    needs: check-validation
+    needs: [check-validation, check-pr-status]
+    if: |
+      needs.check-validation.outputs.pr_number != '' &&
+      needs.check-pr-status.outputs.ready_to_merge == 'true'
     permissions:
       contents: write
       pull-requests: write
 
     steps:
-      - name: Enable auto-merge
-        uses: actions/github-script@v6
+      - name: Merge PR
+        uses: actions/github-script@v7
         with:
           script: |
             const prNumber = ${{ needs.check-validation.outputs.pr_number }};
             const agent = "${{ needs.check-validation.outputs.agent }}";
+            const mergeMethod = "${{ needs.check-pr-status.outputs.merge_method }}";
 
-            // Only auto-merge for specific agents or paths
-            const trustedAgents = ['GrokIA', 'GeminiPro30'];
+            try {
+              console.log(`Merging PR #${prNumber} from ${agent} using ${mergeMethod} method`);
 
-            if (trustedAgents.includes(agent)) {
-              console.log(`Auto-merging PR #${prNumber} from ${agent}`);
               await github.rest.pulls.merge({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
                 pull_number: prNumber,
-                merge_method: 'squash'
+                merge_method: mergeMethod,
+                commit_title: `Merge PR #${prNumber} from ${agent} [Auto-Merge]`
               });
-            } else {
-              console.log(`Agent ${agent} requires manual review.`);
+
+              console.log(`✅ Successfully merged PR #${prNumber}`);
+
+              // Add comment
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: prNumber,
+                body: `✅ **Auto-merged** by Merge Orchestrator\n\n- Agent: ${agent}\n- Method: ${mergeMethod}\n- All checks passed`
+              });
+            } catch (error) {
+              console.error(`❌ Failed to merge PR #${prNumber}:`, error.message);
+
+              // Add comment about failure
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: prNumber,
+                body: `❌ **Auto-merge failed**\n\nReason: ${error.message}\n\nPlease merge manually after resolving issues.`
+              });
+
+              core.setFailed(`Failed to merge PR: ${error.message}`);
             }
 
   # ──────────────────────────────────────────────────────────────────────────
-  # JOB 3: Notify on failure
+  # JOB 4: Notify on failure
   # ──────────────────────────────────────────────────────────────────────────
   notify-failure:
     name: 🚨 Notify Failure
     runs-on: ubuntu-latest
-    if: ${{ github.event.workflow_run.conclusion == 'failure' }}
+    if: |
+      (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'failure') ||
+      (github.event_name == 'pull_request' && github.event.action != 'closed')
+    permissions:
+      pull-requests: write
 
     steps:
       - name: Comment on PR
-        uses: actions/github-script@v6
+        uses: actions/github-script@v7
         with:
           script: |
-            // Add comment to PR about validation failure
-            console.log("Validation failed. Check logs.");
+            let prNumber;
+
+            if (context.eventName === 'pull_request') {
+              prNumber = context.payload.pull_request.number;
+            } else if (context.eventName === 'workflow_run') {
+              const workflowRun = context.payload.workflow_run;
+              const commits = await github.rest.repos.listCommits({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                sha: workflowRun.head_sha
+              });
+
+              if (commits.data.length > 0) {
+                const commitSha = commits.data[0].sha;
+                const prs = await github.rest.repos.listPullRequestsAssociatedWithCommit({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  commit_sha: commitSha
+                });
+
+                if (prs.data.length > 0) {
+                  prNumber = prs.data[0].number;
+                }
+              }
+            }
+
+            if (prNumber) {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: prNumber,
+                body: `⚠️ **Validation Failed**\n\nPlease check the workflow logs and fix any issues before merging.\n\n[View Workflow Run](${context.payload.workflow_run?.html_url || 'N/A'})`
+              });
+            }

@@ -262,7 +262,7 @@ agent/{AgentName}/{feature-description}
 
 1. **Validation:** All PRs must pass the `agent-validation` workflow (Docstrings, Telemetry, Code Quality).
 2. **Merge Orchestrator:** Do **NOT** merge manually. Use the `Merge Orchestrator` workflow to handle conflicts and agent synchronization.
-3. **Commit Messages:** Must follow the format: "Description of change`.
+3. **Commit Messages:** Must follow the format: `[AgentName] type: short imperative` (see CONTRIBUTING.md for details).
 
 ### Workflow Triggers
 
