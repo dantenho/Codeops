@@ -39,7 +39,7 @@ jobs:
 
       - name: Identify PR and Agent
         id: pr
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         with:
           script: |
             let prNumber;
@@ -106,7 +106,7 @@ jobs:
     steps:
       - name: Check PR requirements
         id: check
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         with:
           script: |
             const prNumber = ${{ needs.check-validation.outputs.pr_number }};
@@ -169,7 +169,7 @@ jobs:
 
     steps:
       - name: Merge PR
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         with:
           script: |
             const prNumber = ${{ needs.check-validation.outputs.pr_number }};
@@ -224,7 +224,7 @@ jobs:
 
     steps:
       - name: Comment on PR
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         with:
           script: |
             let prNumber;
