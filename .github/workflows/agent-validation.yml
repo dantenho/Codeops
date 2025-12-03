@@ -1,0 +1,302 @@
+# .github/workflows/agent-validation.yml
+#
+# [CREATE] Validates that all code changes comply with Agents.MD protocol.
+# Checks documentation, telemetry logs, and code structure.
+#
+# Agent: GitHubActions
+# Timestamp: 2025-12-03T10:00:00Z
+
+name: Agent Compliance Validation
+
+on:
+  pull_request:
+    branches: [main, develop, staging]
+    paths:
+      - "**.py"
+      - "**.js"
+      - "**.ts"
+      - "**.go"
+      - "**.rs"
+  push:
+    branches: [main, develop]
+
+env:
+  PYTHON_VERSION: "3.12"
+  NODE_VERSION: "20"
+
+jobs:
+  # ──────────────────────────────────────────────────────────────────────────
+  # JOB 1: Detect which agent made the changes
+  # ──────────────────────────────────────────────────────────────────────────
+  detect-agent:
+    name: 🔍 Detect Agent
+    runs-on: ubuntu-latest
+    outputs:
+      agent_name: ${{ steps.detect.outputs.agent }}
+      has_telemetry: ${{ steps.check-telemetry.outputs.exists }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Detect agent from commit/branch
+        id: detect
+        run: |
+          # Extract agent from branch name or commit message
+          BRANCH_NAME="${GITHUB_HEAD_REF:-$GITHUB_REF_NAME}"
+          COMMIT_MSG=$(git log -1 --pretty=%B)
+
+          # Pattern: agent/AgentName/feature-description
+          if [[ "$BRANCH_NAME" =~ ^agent/([^/]+)/ ]]; then
+            AGENT="${BASH_REMATCH[1]}"
+          # Pattern: [AgentName] in commit message
+          elif [[ "$COMMIT_MSG" =~ \[([A-Za-z]+)\] ]]; then
+            AGENT="${BASH_REMATCH[1]}"
+          else
+            AGENT="Unknown"
+          fi
+
+          echo "agent=$AGENT" >> $GITHUB_OUTPUT
+          echo "🤖 Detected Agent: $AGENT"
+
+      - name: Check telemetry exists
+        id: check-telemetry
+        run: |
+          AGENT="${{ steps.detect.outputs.agent }}"
+          if [ -d "CodeAgents/$AGENT/logs" ]; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+          fi
+
+  # ──────────────────────────────────────────────────────────────────────────
+  # JOB 2: Validate documentation compliance
+  # ──────────────────────────────────────────────────────────────────────────
+  validate-documentation:
+    name: 📝 Documentation Check
+    runs-on: ubuntu-latest
+    needs: detect-agent
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install validation tools
+        run: |
+          pip install pydocstyle interrogate ast-grep
+
+      - name: Check docstring coverage
+        run: |
+          # Require minimum 90% docstring coverage
+          interrogate -v -i --fail-under=90 . \
+            --ignore-init-method \
+            --ignore-init-module \
+            --exclude setup.py \
+            --exclude tests/
+
+      - name: Validate docstring format
+        run: |
+          # Check Google/NumPy docstring conventions
+          pydocstyle --convention=google --count .
+
+      - name: Check for required tags
+        run: |
+          # Verify [CREATE], [REFACTOR], [DEBUG] tags exist
+          echo "Checking for operation tags..."
+
+          MISSING_TAGS=0
+          for file in $(git diff --name-only --diff-filter=AM HEAD~1 -- '*.py'); do
+            if ! grep -q '\[CREATE\]\|\[REFACTOR\]\|\[DEBUG\]\|\[MODIFY\]' "$file"; then
+              echo "❌ Missing operation tag in: $file"
+              MISSING_TAGS=$((MISSING_TAGS + 1))
+            fi
+          done
+
+          if [ $MISSING_TAGS -gt 0 ]; then
+            echo "::error::Found $MISSING_TAGS files without operation tags"
+            exit 1
+          fi
+
+          echo "✅ All files have operation tags"
+
+      - name: Check for agent signature
+        run: |
+          echo "Checking for agent signatures..."
+
+          MISSING_SIG=0
+          for file in $(git diff --name-only --diff-filter=AM HEAD~1 -- '*.py'); do
+            if ! grep -q 'Agent:' "$file"; then
+              echo "❌ Missing Agent signature in: $file"
+              MISSING_SIG=$((MISSING_SIG + 1))
+            fi
+          done
+
+          if [ $MISSING_SIG -gt 0 ]; then
+            echo "::error::Found $MISSING_SIG files without agent signatures"
+            exit 1
+          fi
+
+          echo "✅ All files have agent signatures"
+
+  # ──────────────────────────────────────────────────────────────────────────
+  # JOB 3: Validate code quality
+  # ──────────────────────────────────────────────────────────────────────────
+  validate-code-quality:
+    name: 🔬 Code Quality
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Python with UV
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
+
+      - name: Install linters
+        run: |
+          uv pip install --system ruff mypy black isort
+
+      - name: Run Ruff (linting)
+        run: |
+          ruff check . --output-format=github
+
+      - name: Run Black (formatting)
+        run: |
+          black --check --diff .
+
+      - name: Run isort (imports)
+        run: |
+          isort --check-only --diff .
+
+      - name: Run MyPy (type checking)
+        run: |
+          mypy . --ignore-missing-imports --show-error-codes
+        continue-on-error: true # Warning only for now
+
+  # ──────────────────────────────────────────────────────────────────────────
+  # JOB 4: Validate telemetry logs
+  # ──────────────────────────────────────────────────────────────────────────
+  validate-telemetry:
+    name: 📊 Telemetry Check
+    runs-on: ubuntu-latest
+    needs: detect-agent
+    if: needs.detect-agent.outputs.has_telemetry == 'true'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install JSON schema validator
+        run: pip install jsonschema
+
+      - name: Validate telemetry JSON schemas
+        run: |
+          AGENT="${{ needs.detect-agent.outputs.agent_name }}"
+
+          python << 'EOF'
+          import json
+          import sys
+          from pathlib import Path
+          from jsonschema import validate, ValidationError
+
+          # Schemas from Agents.MD
+          operation_schema = {
+              "type": "object",
+              "required": ["agent", "timestamp", "operation", "target", "status"],
+              "properties": {
+                  "agent": {"type": "string"},
+                  "timestamp": {"type": "string", "format": "date-time"},
+                  "operation": {"type": "string"},
+                  "target": {"type": "object"},
+                  "status": {"type": "string"}
+              }
+          }
+
+          error_schema = {
+              "type": "object",
+              "required": ["agent", "timestamp", "error_type", "message", "severity"],
+              "properties": {
+                  "agent": {"type": "string"},
+                  "timestamp": {"type": "string"},
+                  "error_type": {"type": "string"},
+                  "message": {"type": "string"},
+                  "severity": {"type": "string"}
+              }
+          }
+
+          agent = "${{ needs.detect-agent.outputs.agent_name }}"
+          base_path = Path(f"CodeAgents/{agent}")
+
+          errors = []
+
+          # Validate logs
+          for log_file in base_path.glob("logs/*.json"):
+              try:
+                  with open(log_file) as f:
+                      data = json.load(f)
+                  validate(data, operation_schema)
+                  print(f"✅ {log_file}")
+              except (ValidationError, json.JSONDecodeError) as e:
+                  errors.append(f"{log_file}: {e}")
+                  print(f"❌ {log_file}")
+
+          # Validate errors
+          for error_file in base_path.glob("errors/*.json"):
+              try:
+                  with open(error_file) as f:
+                      data = json.load(f)
+                  validate(data, error_schema)
+                  print(f"✅ {error_file}")
+              except (ValidationError, json.JSONDecodeError) as e:
+                  errors.append(f"{error_file}: {e}")
+                  print(f"❌ {error_file}")
+
+          if errors:
+              print("\n::error::Telemetry validation failed:")
+              for e in errors:
+                  print(f"  - {e}")
+              sys.exit(1)
+
+          print("\n✅ All telemetry files valid")
+          EOF
+
+  # ──────────────────────────────────────────────────────────────────────────
+  # JOB 5: Generate compliance report
+  # ──────────────────────────────────────────────────────────────────────────
+  compliance-report:
+    name: 📋 Compliance Report
+    runs-on: ubuntu-latest
+    needs: [detect-agent, validate-documentation, validate-code-quality]
+    if: always()
+
+    steps:
+      - name: Generate report
+        run: |
+          AGENT="${{ needs.detect-agent.outputs.agent_name }}"
+          DOC_STATUS="${{ needs.validate-documentation.result }}"
+          CODE_STATUS="${{ needs.validate-code-quality.result }}"
+
+          echo "## 🤖 Agent Compliance Report" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Check | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|-------|--------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Agent Detected | \`$AGENT\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| Documentation | $([[ "$DOC_STATUS" == "success" ]] && echo "✅ Pass" || echo "❌ Fail") |" >> $GITHUB_STEP_SUMMARY
+          echo "| Code Quality | $([[ "$CODE_STATUS" == "success" ]] && echo "✅ Pass" || echo "❌ Fail") |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "---" >> $GITHUB_STEP_SUMMARY
+          echo "*Validated against Agents.MD protocol v3.0*" >> $GITHUB_STEP_SUMMARY

@@ -1,0 +1,51 @@
+name: Agent Task
+description: Create a new task for an AI agent
+title: "[Task]: "
+labels: ["agent-task", "triage"]
+body:
+  - type: dropdown
+    id: agent
+    attributes:
+      label: Assigned Agent
+      options:
+        - GrokIA
+        - GeminiFlash25
+        - GeminiPro25
+        - GeminiPro30
+        - Jules
+        - ClaudeCode
+        - Composer
+        - Antigravity
+    validations:
+      required: true
+
+  - type: dropdown
+    id: task_type
+    attributes:
+      label: Task Type
+      options:
+        - CREATE
+        - REFACTOR
+        - DEBUG
+        - OPTIMIZE
+        - DOCUMENT
+        - ANALYZE
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Task Description
+      description: Detailed description of what the agent needs to do.
+      placeholder: "Create a new module for..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Context & Constraints
+      description: Any specific requirements, file paths, or constraints.
+    validations:
+      required: false

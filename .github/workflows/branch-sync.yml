@@ -1,0 +1,52 @@
+# .github/workflows/branch-sync.yml
+#
+# [CREATE] Synchronizes agent branches with main.
+# Ensures that all agent branches are kept up-to-date with the latest
+# changes from the main branch to avoid drift.
+#
+# Agent: GitHubActions
+# Timestamp: 2025-12-03T10:00:00Z
+
+name: Branch Synchronization
+
+on:
+  push:
+    branches: [main]
+  schedule:
+    - cron: '0 0 * * *'  # Daily at midnight
+
+jobs:
+  sync-branches:
+    name: 🔄 Sync Branches
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Configure Git
+        run: |
+          git config user.name "GitHub Actions"
+          git config user.email "actions@github.com"
+
+      - name: Sync Agent Branches
+        run: |
+          # List of active agent branches to keep in sync
+          AGENTS=("agent/GrokIA" "agent/GeminiFlash25" "agent/GeminiPro25" "agent/GeminiPro30" "agent/Jules" "agent/ClaudeCode" "agent/Composer")
+
+          for BRANCH in "${AGENTS[@]}"; do
+            # Check if branch exists remotely
+            if git ls-remote --exit-code --heads origin "$BRANCH"; then
+              echo "Syncing $BRANCH..."
+              git checkout "$BRANCH"
+              git merge origin/main --no-edit -m "Merge main into $BRANCH [Auto-Sync]"
+              git push origin "$BRANCH"
+            else
+              echo "Branch $BRANCH does not exist, skipping."
+            fi
+          done

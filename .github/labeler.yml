@@ -1,0 +1,31 @@
+# .github/labeler.yml
+
+# Label by changed files
+backend:
+  - changed-files:
+      - any-glob-to-any-file: 'backend/**'
+
+frontend:
+  - changed-files:
+      - any-glob-to-any-file: 'frontend/**'
+
+documentation:
+  - changed-files:
+      - any-glob-to-any-file: '**/*.md'
+      - any-glob-to-any-file: 'docs/**'
+
+# Label by agent branch
+agent-grok:
+  - head-branch: ['^agent/GrokIA']
+
+agent-gemini:
+  - head-branch: ['^agent/Gemini.*']
+
+agent-claude:
+  - head-branch: ['^agent/ClaudeCode']
+
+agent-jules:
+  - head-branch: ['^agent/Jules']
+
+agent-composer:
+  - head-branch: ['^agent/Composer']
