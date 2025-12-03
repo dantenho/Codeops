@@ -19,6 +19,14 @@ The system represents a paradigm shift in how AI agents learn, generate, and imp
 
 ---
 
+## 🧱 Structures Skeleton Template
+
+- **Path:** [`Structures/AGENT_TEMPLATE/2025-12-03T000000Z`](Structures/AGENT_TEMPLATE/2025-12-03T000000Z/README.md)
+- **Purpose:** Provides a ready-to-clone filesystem skeleton for agent training assets (training, rules, methods, files, database, memory).
+- **How to use:** Copy the folder, rename `AGENT_TEMPLATE` to your agent ID, update the timestamp, and follow the per-directory README instructions and telemetry checklist.
+
+---
+
 ## ✅ Completed Phases (1-5)
 
 ### Phase 1: Core Infrastructure Enhancement ✓

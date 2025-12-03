@@ -105,10 +105,13 @@ class TrainingManager:
             activities.append(TrainingActivity(
                 activity_id=str(uuid.uuid4()),
                 activity_type=ActivityType.SYNTAX_DRILL,
+                content_id="syntax/list-comprehensions",
                 title="Python List Comprehensions",
                 description="Convert the following loops to list comprehensions...",
                 difficulty=level,
-                xp_reward=50
+                duration_minutes=20,
+                xp_reward=50,
+                language="python",
             ))
 
         if threndia_settings and self.threndia_service:
@@ -160,17 +163,13 @@ class TrainingManager:
         progress.xp.total += total_xp
 
         # Check for level up
-        from ..models.progress import LEVEL_THRESHOLDS
-        for level, threshold in sorted(LEVEL_THRESHOLDS.items(), reverse=True):
+        for level, threshold in sorted(AgentProgress.LEVEL_THRESHOLDS.items(), reverse=True):
             if progress.xp.total >= threshold:
                 progress.current_level = level
                 break
 
         # Update streaks
-        progress.daily_streak.current += 1
-        if progress.daily_streak.current > progress.daily_streak.longest:
-            progress.daily_streak.longest = progress.daily_streak.current
-        progress.daily_streak.last_activity = datetime.now(timezone.utc).date()
+        progress.update_streak()
 
         # Save with snapshot
         self._save_progress(progress, create_snapshot=create_snapshot)

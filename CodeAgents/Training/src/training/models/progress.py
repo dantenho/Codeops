@@ -10,19 +10,8 @@ Timestamp: 2025-12-03T10:00:00Z
 from __future__ import annotations
 
 from datetime import datetime, timezone
-from typing import Dict, List, Optional
+from typing import ClassVar, Dict, List, Optional
 from pydantic import BaseModel, Field, computed_field
-
-LEVEL_THRESHOLDS: Dict[int, int] = {
-    1: 0,
-    2: 500,
-    3: 1500,
-    4: 4000,
-    5: 10000,
-    6: 25000,
-    7: 50000,
-}
-
 
 class SkillLevel(BaseModel):
     """Proficiency in a specific skill or language."""
@@ -100,6 +89,16 @@ class AgentProgress(BaseModel):
     Aggregates all training data, achievements, and analytics
     for a single agent.
     """
+    LEVEL_THRESHOLDS: ClassVar[Dict[int, int]] = {
+        1: 0,
+        2: 500,
+        3: 1500,
+        4: 4000,
+        5: 10000,
+        6: 25000,
+        7: 50000,
+    }
+
     agent_id: str
     started_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     last_activity: Optional[datetime] = None
@@ -144,7 +143,7 @@ class AgentProgress(BaseModel):
 
     def _check_level_up(self) -> bool:
         """Check and apply level up if qualified."""
-        for level, threshold in sorted(LEVEL_THRESHOLDS.items(), reverse=True):
+        for level, threshold in sorted(self.LEVEL_THRESHOLDS.items(), reverse=True):
             if self.xp.total >= threshold and level > self.current_level:
                 self.current_level = level
                 return True
@@ -153,8 +152,9 @@ class AgentProgress(BaseModel):
     def update_streak(self) -> None:
         """Update daily streak based on activity."""
         now = datetime.now(timezone.utc)
-        if self.last_activity:
-            delta = now.date() - self.last_activity.date()
+        last = self.daily_streak.last_activity
+        if last:
+            delta = now.date() - last.date()
             if delta.days == 1:
                 self.daily_streak.current += 1
             elif delta.days > 1:
@@ -163,6 +163,7 @@ class AgentProgress(BaseModel):
             self.daily_streak.current = 1
 
         self.daily_streak.last_activity = now
+        self.last_activity = now
         if self.daily_streak.current > self.daily_streak.longest:
             self.daily_streak.longest = self.daily_streak.current
 

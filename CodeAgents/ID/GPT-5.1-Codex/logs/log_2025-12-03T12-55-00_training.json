@@ -1,0 +1,21 @@
+{
+  "agent": "GPT-5.1 Codex",
+  "timestamp": "2025-12-03T12:55:00Z",
+  "operation": "REFACTOR",
+  "target": {
+    "file": "CodeAgents/Training/src/training/cli.py",
+    "function": null,
+    "lines": {
+      "start": 1,
+      "end": 520
+    }
+  },
+  "status": "SUCCESS",
+  "duration_ms": 89000,
+  "context": {
+    "description": "Expanded training CLI, added ATS tests, and refreshed docs/CI",
+    "tests": [
+      "python -m pytest CodeAgents/Training/tests/test_cli.py"
+    ]
+  }
+}

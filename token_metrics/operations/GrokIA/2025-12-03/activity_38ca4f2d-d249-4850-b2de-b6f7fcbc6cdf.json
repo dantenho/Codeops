@@ -1,0 +1,23 @@
+{
+  "session_id": "65e46f02-eb9c-4069-9aee-32b1db68440d",
+  "agent_id": "GrokIA",
+  "operation_id": "activity_38ca4f2d-d249-4850-b2de-b6f7fcbc6cdf",
+  "timestamp": "2025-12-03 18:25:30.667574",
+  "prompt_tokens": 100,
+  "context_tokens": 50,
+  "user_input_tokens": 0,
+  "completion_tokens": 200,
+  "cached_tokens": 0,
+  "output_quality_score": 85.0,
+  "context_utilization_score": 0.0,
+  "cost_usd": 0.00345,
+  "model_name": "claude-sonnet-4-5",
+  "operation_type": "training_activity",
+  "language": null,
+  "total_input_tokens": 150,
+  "total_output_tokens": 200,
+  "total_tokens": 350,
+  "efficiency_score": 24.285714285714285,
+  "cache_hit_rate": 0.0,
+  "context_efficiency": 0.0
+}

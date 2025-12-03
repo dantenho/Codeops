@@ -1,0 +1,23 @@
+{
+  "session_id": "60ae5504-1873-4576-8944-c862072487d8",
+  "agent_id": "Composer",
+  "start_time": "2025-12-03 16:40:05.979974",
+  "end_time": "2025-12-03 16:40:05.979974",
+  "total_operations": 1,
+  "total_prompt_tokens": 210,
+  "total_context_tokens": 140,
+  "total_user_input_tokens": 70,
+  "total_completion_tokens": 175,
+  "total_cached_tokens": 30,
+  "average_quality_score": 92.58422745328633,
+  "average_context_utilization": 85.07529615969986,
+  "average_efficiency_score": 16.38658892978519,
+  "total_cost_usd": 0.0037949999999999998,
+  "operations_by_type": {
+    "syntax_drill": 1
+  },
+  "total_input_tokens": 390,
+  "total_tokens": 565,
+  "average_cache_hit_rate": 7.142857142857142,
+  "cost_per_operation": 0.0037949999999999998
+}

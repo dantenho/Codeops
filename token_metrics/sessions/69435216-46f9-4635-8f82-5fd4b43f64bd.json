@@ -1,0 +1,23 @@
+{
+  "session_id": "69435216-46f9-4635-8f82-5fd4b43f64bd",
+  "agent_id": "GrokIA",
+  "start_time": "2025-12-03 18:27:24.879086",
+  "end_time": "2025-12-03 18:27:24.879086",
+  "total_operations": 1,
+  "total_prompt_tokens": 150,
+  "total_context_tokens": 100,
+  "total_user_input_tokens": 0,
+  "total_completion_tokens": 250,
+  "total_cached_tokens": 0,
+  "average_quality_score": 82.0,
+  "average_context_utilization": 0.0,
+  "average_efficiency_score": 16.400000000000002,
+  "total_cost_usd": 0.0045,
+  "operations_by_type": {
+    "vibe_code_generation": 1
+  },
+  "total_input_tokens": 250,
+  "total_tokens": 500,
+  "average_cache_hit_rate": 0.0,
+  "cost_per_operation": 0.0045
+}

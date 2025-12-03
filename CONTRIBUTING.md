@@ -168,11 +168,14 @@ def process_image(image_path: str, model: str = "FLUX.2-dev") -> dict:
 | --- | --- | --- | --- |
 | Unit | `tests/` | `pytest` | Default target; keep fast. |
 | Targeted | `tests/test_x.py::case` | `pytest tests/test_x.py -k case` | Use during TDD loops. |
+| CodeAgents Training | `CodeAgents/Training/tests` | `PYTHONPATH=".:CodeAgents/Training/src" uv run pytest CodeAgents/Training/tests -v` | Validates CLI, models, spaced repetition, and Threndia services end-to-end. |
+| CodeAgents GitHub | `CodeAgents/GitHub/tests` | `uv run pytest CodeAgents/GitHub/tests -v` | Keeps the optimization catalog + detector contract healthy. |
 | Coverage | `tools/Pylorix` | `pytest --cov=tools/Pylorix --cov-report=html` | Ensure new logic is exercised. |
 | Integration | Marked with `@pytest.mark.integration` | `pytest -m integration` | Guard with env checks (e.g., Supabase). |
 
 Expectations:
 - Provide fixtures/mocks where external services exist.
+- Use `$Env:PYTHONPATH=\"<repo>;...\"` on Windows PowerShell when mirroring the training command above.
 - Document manual testing in the PR when automation is not available.
 
 ---

@@ -31,6 +31,11 @@ from .services.reflex_service import ReflexService
 from .services.token_tracker import TokenTracker
 from .services.training_manager import TrainingManager
 
+# Import skeleton generator (will be initialized after PROJECT_ROOT is defined)
+SKELETON_AVAILABLE = False
+SkeletonGenerator = None
+create_skeleton_generator = None
+
 app = typer.Typer(
     name="training",
     help="Agent Training System (ATS) - SkeletalMind",
@@ -48,6 +53,24 @@ token_tracker = TokenTracker(PROJECT_ROOT / "token_metrics")
 training_manager = TrainingManager(TRAINING_ROOT)
 reflex_service = ReflexService(TRAINING_ROOT)
 memory_service = MemoryService()
+
+# Initialize skeleton generator after PROJECT_ROOT is defined
+try:
+    import sys
+    from pathlib import Path
+    _core_path = PROJECT_ROOT / "CodeAgents" / "core"
+    if _core_path.exists():
+        sys.path.insert(0, str(PROJECT_ROOT / "CodeAgents"))
+        from core.skeleton_generator import SkeletonGenerator, create_skeleton_generator
+        SKELETON_AVAILABLE = True
+    else:
+        SKELETON_AVAILABLE = False
+        SkeletonGenerator = None
+        create_skeleton_generator = None
+except Exception:
+    SKELETON_AVAILABLE = False
+    SkeletonGenerator = None
+    create_skeleton_generator = None
 
 
 def _load_token_budget_config() -> Dict[str, Any]:
@@ -533,7 +556,7 @@ def _complete_structured_session(agent: str, session) -> List[str]:
         start_time = datetime.now(timezone.utc)
         duration_factor = random.uniform(0.6, 1.4)
         completed_at = start_time + timedelta(
-            minutes=activity.estimated_duration_minutes * duration_factor
+            minutes=activity.duration_minutes * duration_factor
         )
         score = max(60.0, min(100.0, 85 + random.uniform(-12, 8)))
         result = ActivityResult(
@@ -899,6 +922,71 @@ def reflex_recommend(
 
     except Exception as e:
         console.print(f"[red]Error getting recommendations: {e}[/red]")
+
+
+@app.command()
+def skeleton(
+    agent: str = typer.Argument(..., help="Agent ID"),
+    timestamp: Optional[str] = typer.Option(None, "--timestamp", "-t", help="ISO 8601 timestamp (auto-generated if not provided)"),
+    all_agents: bool = typer.Option(False, "--all", "-a", help="Create skeletons for all configured agents"),
+) -> None:
+    """Create skeleton directory structure for agent(s)."""
+    if not SKELETON_AVAILABLE or create_skeleton_generator is None:
+        console.print("[red]Skeleton generator not available. Check CodeAgents/core/skeleton_generator.py[/red]")
+        raise typer.Exit(1)
+
+    try:
+        generator = create_skeleton_generator(PROJECT_ROOT / "CodeAgents")
+
+        if all_agents:
+            console.print("[blue]Creating skeletons for all configured agents...[/blue]")
+            agent_ids = training_manager.config_service.load_config("agent_profiles.yaml").get("agents", {}).keys()
+            if not agent_ids:
+                # Fallback to default agents
+                agent_ids = [
+                    "GrokIA", "GeminiFlash25", "GeminiPro25",
+                    "GeminiPro30", "Jules", "ClaudeCode", "Composer"
+                ]
+
+            results = generator.create_for_all_agents(list(agent_ids))
+
+            table = Table(title="Skeleton Creation Results")
+            table.add_column("Agent", style="cyan")
+            table.add_column("Status", style="magenta")
+            table.add_column("Path", style="dim")
+
+            for agent_id, path in results.items():
+                if path:
+                    table.add_row(agent_id, "[green]✓ Created[/green]", str(path))
+                else:
+                    table.add_row(agent_id, "[red]✗ Failed[/red]", "N/A")
+
+            console.print(table)
+        else:
+            console.print(f"[blue]Creating skeleton structure for {agent}...[/blue]")
+            path = generator.create_agent_skeleton(agent, timestamp)
+
+            if path:
+                console.print(f"[green]✅ Skeleton created at: {path}[/green]")
+
+                # Show structure
+                console.print("\n[cyan]Structure created:[/cyan]")
+                for subdir in sorted(path.rglob("*")):
+                    if subdir.is_dir():
+                        rel_path = subdir.relative_to(path)
+                        indent = "  " * (len(rel_path.parts) - 1)
+                        console.print(f"{indent}📁 {rel_path.name}/")
+                    elif subdir.is_file():
+                        rel_path = subdir.relative_to(path)
+                        indent = "  " * len(rel_path.parts)
+                        console.print(f"{indent}📄 {rel_path.name}")
+            else:
+                console.print(f"[red]Failed to create skeleton for {agent}[/red]")
+                raise typer.Exit(1)
+
+    except Exception as e:
+        console.print(f"[red]Error creating skeleton: {e}[/red]")
+        raise typer.Exit(1)
 
 
 if __name__ == "__main__":

@@ -12,11 +12,13 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from enum import Enum, auto
 from typing import Any, Dict, List, Optional
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, ConfigDict, field_validator
 
 
 class ActivityType(str, Enum):
     """Types of training activities."""
+
+    EXERCISE = "exercise"
     FLASHCARD_REVIEW = "flashcard_review"
     CODING_EXERCISE = "coding_exercise"
     ALGORITHM_CHALLENGE = "algorithm_challenge"
@@ -45,16 +47,19 @@ class TrainingActivity(BaseModel):
         title: Display title
         description: Detailed instructions
         difficulty: 1-5 scale
-        estimated_duration_minutes: Expected time
+        duration_minutes: Expected time commitment
         xp_reward: Experience points for completion
         required_resources: URLs or file paths
     """
+    model_config = ConfigDict(populate_by_name=True)
+
     activity_id: str
     activity_type: ActivityType
-    title: str
-    description: str
+    content_id: Optional[str] = None
+    title: str = "Training Activity"
+    description: str = ""
     difficulty: int = Field(1, ge=1, le=5)
-    estimated_duration_minutes: int = Field(15, ge=1)
+    duration_minutes: int = Field(15, ge=1, le=180)
     xp_reward: int = Field(50, ge=0)
     required_resources: List[str] = Field(default_factory=list)
     language: Optional[str] = None

@@ -12,7 +12,7 @@ from __future__ import annotations
 from datetime import datetime, date, timezone
 from enum import Enum
 from typing import List, Optional, Dict, Any
-from pydantic import BaseModel, Field, computed_field
+from pydantic import BaseModel, Field, ConfigDict, computed_field
 
 
 class FlashcardCategory(str, Enum):
@@ -37,6 +37,7 @@ class ReviewHistory(BaseModel):
     """Record of a single review."""
     date: datetime
     rating: ReviewRating
+    response_time_ms: int
     interval_before: float
     interval_after: float
     ease_before: float
@@ -52,6 +53,7 @@ class SpacedRepetitionData(BaseModel):
     history: List[ReviewHistory] = Field(default_factory=list)
     lapses: int = 0
     is_leech: bool = False
+    last_review: Optional[date] = None
 
 
 class FlashcardFront(BaseModel):
@@ -64,8 +66,9 @@ class FlashcardFront(BaseModel):
 
 class FlashcardBack(BaseModel):
     """Back side of a flashcard (answer)."""
+
     answer: str
-    explanation: str
+    explanation: str = ""
     related_concepts: List[str] = Field(default_factory=list)
     common_mistakes: List[str] = Field(default_factory=list)
     references: List[str] = Field(default_factory=list)
@@ -78,9 +81,14 @@ class Flashcard(BaseModel):
     Represents a single learning unit with question/answer
     and SM-2 scheduling information.
     """
-    card_id: str
-    deck_id: str
+    model_config = ConfigDict(populate_by_name=True)
+
+    id: str = Field(alias="card_id")
+    deck_id: str = "default"
     category: FlashcardCategory
+    language: str = Field(default="python")
+    level: int = Field(1, ge=1, le=5)
+    difficulty: int = Field(1, ge=1, le=5)
     front: FlashcardFront
     back: FlashcardBack
     sr_data: SpacedRepetitionData = Field(default_factory=SpacedRepetitionData)
@@ -105,12 +113,11 @@ class Flashcard(BaseModel):
     @property
     def maturity(self) -> str:
         """Get maturity level based on interval."""
+        if self.sr_data.repetitions == 0:
+            return "new"
         if self.sr_data.interval_days < 21:
             return "learning"
-        elif self.sr_data.interval_days < 90:
-            return "young"
-        else:
-            return "mature"
+        return "mature"
 
 
 class FlashcardDeck(BaseModel):
@@ -118,6 +125,7 @@ class FlashcardDeck(BaseModel):
     deck_id: str
     name: str
     description: str
+    language: str = "python"
     level: int = Field(..., ge=1, le=5)
     cards: List[Flashcard] = Field(default_factory=list)
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))

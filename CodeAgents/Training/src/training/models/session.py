@@ -12,7 +12,7 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from enum import Enum
 from typing import List, Optional
-from pydantic import BaseModel, Field, computed_field
+from pydantic import BaseModel, Field, ConfigDict, computed_field
 
 from .activity import TrainingActivity, ActivityResult
 
@@ -30,6 +30,8 @@ class SessionType(str, Enum):
 
 class SessionStatus(str, Enum):
     """Status of a training session."""
+
+    PENDING = "pending"
     SCHEDULED = "scheduled"
     IN_PROGRESS = "in_progress"
     COMPLETED = "completed"
@@ -44,15 +46,28 @@ class TrainingSession(BaseModel):
     Manages the full lifecycle of a training session from
     scheduling through completion and evaluation.
     """
+    model_config = ConfigDict(populate_by_name=True)
+
     session_id: str
     agent_id: str
     session_type: SessionType
-    scheduled_for: datetime
-    status: SessionStatus = SessionStatus.SCHEDULED
+    scheduled_at: datetime = Field(alias="scheduled_for")
+    status: SessionStatus = SessionStatus.PENDING
+    started_at: Optional[datetime] = None
+    completed_at: Optional[datetime] = None
     activities: List[TrainingActivity] = Field(default_factory=list)
     results: List[ActivityResult] = Field(default_factory=list)
     focus_areas: List[str] = Field(default_factory=list)
     notes: str = ""
+
+    @property
+    def scheduled_for(self) -> datetime:
+        """Backwards compatible alias for scheduled_at."""
+        return self.scheduled_at
+
+    @scheduled_for.setter
+    def scheduled_for(self, value: datetime) -> None:
+        self.scheduled_at = value
 
     @computed_field
     @property
@@ -95,8 +110,13 @@ class TrainingSession(BaseModel):
 
     def start(self) -> None:
         """Mark session as started."""
+        if not self.started_at:
+            self.started_at = datetime.now(timezone.utc)
         self.status = SessionStatus.IN_PROGRESS
 
     def complete(self) -> None:
         """Mark session as completed."""
+        if not self.started_at:
+            self.started_at = datetime.now(timezone.utc)
+        self.completed_at = datetime.now(timezone.utc)
         self.status = SessionStatus.COMPLETED

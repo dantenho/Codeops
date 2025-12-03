@@ -48,8 +48,9 @@ This document explains how the automation stack keeps every branch aligned with 
 1. **Detect Agent** -- Parses branch name (`agent/<name>/...`) and commit subjects (`[AgentName] ...`). Emits `agent_id` and `has_telemetry` outputs.
 2. **Documentation Validation** -- Runs `interrogate`, `pydocstyle`, and an operation-tag scanner. Coverage target defaults to 90%; configure via repo vars if needed.
 3. **Code Quality** -- Executes `ruff`, `black`, `isort`, and `mypy`. `mypy` currently warns only; promote to required once types stabilize.
-4. **Telemetry Validation** -- Conditional on `has_telemetry`. Uses the JSON schemas in `CodeAgents/schemas/` to check structure and severity enums.
-5. **Compliance Report** -- Creates a Markdown summary with ✅/❌ entries and posts it to the PR via `checks: write` permissions.
+4. **Unit Tests** -- Sets `PYTHONPATH=$GITHUB_WORKSPACE:$GITHUB_WORKSPACE/CodeAgents/Training/src` so `training.*` modules resolve, then runs `python -m pytest CodeAgents/GitHub/tests -v` and `python -m pytest CodeAgents/Training/tests -v`.
+5. **Telemetry Validation** -- Conditional on `has_telemetry`. Uses the JSON schemas in `CodeAgents/schemas/` to check structure and severity enums.
+6. **Compliance Report** -- Creates a Markdown summary with ✅/❌ entries and posts it to the PR via `checks: write` permissions.
 
 **Acceleration Tips**
 - Cache `~/.cache/pip` and `.venv` between jobs where possible.

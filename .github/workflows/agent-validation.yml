@@ -186,6 +186,8 @@ jobs:
     name: ✅ Unit Tests
     runs-on: ubuntu-latest
     needs: validate-code-quality
+    env:
+      PYTHONPATH: "${{ github.workspace }}:${{ github.workspace }}/CodeAgents/Training/src"
 
     steps:
       - name: Checkout code
@@ -206,10 +208,10 @@ jobs:
           uv pip install --system pytest pytest-cov typer rich filelock chromadb tiktoken
 
       - name: Optimization pipeline tests
-        run: python -m pytest CodeAgents/GitHub/tests
+        run: python -m pytest CodeAgents/GitHub/tests -v
 
-      - name: Training CLI tests
-        run: python -m pytest CodeAgents/Training/tests/test_cli.py
+      - name: Training suite
+        run: python -m pytest CodeAgents/Training/tests -v
 
   # ──────────────────────────────────────────────────────────────────────────
   # JOB 4: Validate telemetry logs
