@@ -1,0 +1,12 @@
+[submodule "libs/ComfyUI"]
+	path = libs/ComfyUI
+	url = https://github.com/comfyanonymous/ComfyUI.git
+[submodule "libs/crewAI"]
+	path = libs/crewAI
+	url = https://github.com/joaomdmoura/crewAI.git
+[submodule "libs/playwright"]
+	path = libs/playwright
+	url = https://github.com/microsoft/playwright.git
+[submodule "libs/firecrawl"]
+	path = libs/firecrawl
+	url = https://github.com/mendableai/firecrawl.git
