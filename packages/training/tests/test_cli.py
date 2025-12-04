@@ -9,9 +9,9 @@ from pathlib import Path
 import pytest
 from typer.testing import CliRunner
 
-from CodeAgents.Training.src.training import cli as training_cli
-from CodeAgents.Training.src.training.data.progress_repository import ProgressRepository
-from CodeAgents.Training.src.training.services.token_tracker import TokenTracker
+from packages.training.src.training import cli as training_cli
+from packages.training.src.training.data.progress_repository import ProgressRepository
+from packages.training.src.training.services.token_tracker import TokenTracker
 
 
 class _MemoryStub:

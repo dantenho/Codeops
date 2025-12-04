@@ -22,7 +22,7 @@ from rich.table import Table
 from rich.prompt import Prompt, Confirm
 
 # Log training session reflection
-from CodeAgents.core.telemetry import telemetry, OperationLog
+from packages.core.src.telemetry import telemetry, OperationLog
 
 reflection_log = OperationLog(
     agent="GrokIA",

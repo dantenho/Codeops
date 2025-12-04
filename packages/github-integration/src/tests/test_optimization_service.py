@@ -6,7 +6,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from CodeAgents.GitHub.optimization_service import OptimizationService
+from packages.github-integration.src.optimization_service import OptimizationService
 
 
 def _make_service(tmp_path: Path) -> OptimizationService:

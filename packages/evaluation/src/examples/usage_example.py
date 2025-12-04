@@ -9,9 +9,9 @@ Demonstrates how to use the code evaluation system for:
 """
 
 from pathlib import Path
-from CodeAgents.Evaluation import CodeEvaluator
-from CodeAgents.Evaluation.metrics import analyze_code_quality
-from CodeAgents.Evaluation.gates import (
+from packages.evaluation.src.core.evaluator import CodeEvaluator
+from packages.evaluation.src.metrics.code_quality import analyze_code_quality
+from packages.evaluation.src.gates.quality_gate import (
     get_quality_gate,
     check_quality_gate,
     create_gate_report,
@@ -163,7 +163,7 @@ def process_data(data):
     gate = get_quality_gate("commit")
 
     # Create mock evaluation result
-    from CodeAgents.Evaluation.core import EvaluationResult, EvaluationContext
+    from packages.evaluation.src.core.evaluator import EvaluationResult, EvaluationContext
 
     result = EvaluationResult(
         evaluation_id="test",
