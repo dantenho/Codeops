@@ -1,145 +1,35 @@
 """
 Module: main.py
-Purpose: Serve the EudoraX Prototype API and expose evaluation workflows.
+Purpose: FastAPI backend for EudoraX Prototype.
 
-Delivers the first functional slice of the system by wiring FastAPI endpoints
-to the Agent Metrics & Evaluation System (AMES). Includes typed payload models,
-telemetry hooks, and in-memory persistence for quick iteration feedback.
+Provides REST API endpoints for agent telemetry, metrics, and coordination.
 
-Agent: GPT-5.1-Codex
-Created: 2025-12-03T15:35:00Z
-Operation: [REFACTOR]
+Agent: ClaudeCode
+Created: 2025-12-04T12:00:00Z
+Operation: [MODIFY]
 """
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
-from enum import Enum
-from typing import Any, Dict, List
-from uuid import UUID, uuid4
-
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
+from typing import Optional, List, Dict, Any
+from datetime import datetime, timezone
 
-from CodeAgents.core.metrics import (
-    AgentEvaluator,
-    ComplexityLevel,
-    MetricScores,
-    TaskContext,
-    TaskType,
+from core.telemetry import (
+    get_telemetry_service,
+    TelemetryEvent,
+    OperationMetric,
+    OperationType,
+    OperationStatus
 )
-from CodeAgents.core.telemetry import OperationLog, TelemetryManager
 
-AGENT_NAME = "GPT-5.1-Codex"
-APP_START_TIME = datetime.now(timezone.utc)
-
-
-class TaskTypeName(str, Enum):
-    """Lightweight enum for validating incoming task types."""
-
-    CREATE = "create"
-    REFACTOR = "refactor"
-    DEBUG = "debug"
-    OPTIMIZE = "optimize"
-    DOCUMENT = "document"
-    ANALYZE = "analyze"
-
-
-class ComplexityLevelName(str, Enum):
-    """Human-friendly complexity labels that align with AMES enums."""
-
-    EASY = "EASY"
-    MEDIUM = "MEDIUM"
-    HARD = "HARD"
-    COMPLEX = "COMPLEX"
-    EXPERT = "EXPERT"
-
-
-class MetricScoresPayload(BaseModel):
-    """
-    [CREATE] Validates raw metric scores prior to evaluation.
-
-    Ensures inputs stay within 0-100 bounds before converting them into
-    domain objects consumed by AMES.
-
-    Agent: GPT-5.1-Codex
-    Timestamp: 2025-12-03T15:35:00Z
-    """
-
-    accuracy: float = Field(..., ge=0, le=100, description="Functional correctness score")
-    speed: float = Field(..., ge=0, le=100, description="Latency and throughput score")
-    quality: float = Field(..., ge=0, le=100, description="Documentation and lint quality")
-    adaptability: float = Field(..., ge=0, le=100, description="Context and learning ability")
-    reliability: float = Field(..., ge=0, le=100, description="Stability and recovery score")
-
-    class Config:
-        extra = "forbid"
-
-
-class TaskContextPayload(BaseModel):
-    """
-    [CREATE] Captures contextual metadata for each evaluation request.
-
-    Agent: GPT-5.1-Codex
-    Timestamp: 2025-12-03T15:35:00Z
-    """
-
-    task_type: TaskTypeName = Field(..., description="Task family executed by the agent")
-    complexity: ComplexityLevelName = Field(..., description="Difficulty tier of the task")
-    language: str = Field(..., min_length=1, description="Primary programming language")
-    lines_of_code: int = Field(..., ge=0, le=10000, description="Lines touched during task")
-    duration_seconds: float = Field(..., gt=0, description="End-to-end task duration")
-
-    class Config:
-        extra = "forbid"
-
-
-class EvaluationRequest(BaseModel):
-    """
-    [CREATE] Top-level request envelope for the evaluation endpoint.
-
-    Agent: GPT-5.1-Codex
-    Timestamp: 2025-12-03T15:35:00Z
-    """
-
-    metrics: MetricScoresPayload
-    context: TaskContextPayload
-
-
-class EvaluationResult(BaseModel):
-    """
-    [CREATE] Serializes the AMES composite output for API responses.
-
-    Agent: GPT-5.1-Codex
-    Timestamp: 2025-12-03T15:35:00Z
-    """
-
-    composite_score: float
-    base_score: float
-    complexity_bonus: float
-    language_modifier: float
-    grade: str
-    percentile: int
-    adjusted_scores: Dict[str, float]
-    context: Dict[str, Any]
-    breakdown: Dict[str, Any]
-
-
-class EvaluationEnvelope(BaseModel):
-    """
-    [CREATE] Response wrapper that adds identifiers and timestamps.
-
-    Agent: GPT-5.1-Codex
-    Timestamp: 2025-12-03T15:35:00Z
-    """
-
-    evaluation_id: UUID
-    recorded_at: datetime
-    result: EvaluationResult
-
-
-app = FastAPI(title="EudoraX Prototype API")
+app = FastAPI(
+    title="EudoraX Prototype API",
+    description="Multi-Agent AI Development Workspace Backend",
+    version="1.0.0"
+)
 
 app.add_middleware(
     CORSMiddleware,
@@ -149,268 +39,227 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-telemetry_manager = TelemetryManager(base_path="CodeAgents/ID")
-agent_evaluator = AgentEvaluator()
-evaluation_history: List[EvaluationEnvelope] = []
+# ========================
+# Request/Response Models
+# ========================
+
+class EventRequest(BaseModel):
+    """Request model for recording events."""
+    event_type: str
+    agent_id: str
+    data: Dict[str, Any] = Field(default_factory=dict)
+    metadata: Dict[str, Any] = Field(default_factory=dict)
 
 
-def _build_metric_scores(payload: MetricScoresPayload) -> MetricScores:
-    """
-    [CREATE] Converts a validated payload into the AMES MetricScores object.
-
-    Args:
-        payload (MetricScoresPayload): User-provided metrics.
-
-    Returns:
-        MetricScores: Domain object ready for evaluation.
-
-    Raises:
-        ValueError: If payload values fall outside AMES constraints.
-
-    Example:
-        >>> _build_metric_scores(MetricScoresPayload(
-        ...     accuracy=90, speed=80, quality=85, adaptability=70, reliability=95
-        ... ))
-
-    Complexity:
-        Time: O(1)
-        Space: O(1)
-
-    Side Effects:
-        - None
-
-    Design Patterns:
-        - Factory: wraps payload creation into a dedicated helper.
-
-    Thread Safety:
-        Thread-safe; no shared state is mutated.
-
-    Agent: GPT-5.1-Codex
-    Timestamp: 2025-12-03T15:35:00Z
-    """
-
-    return MetricScores(
-        accuracy=payload.accuracy,
-        speed=payload.speed,
-        quality=payload.quality,
-        adaptability=payload.adaptability,
-        reliability=payload.reliability,
-    )
+class MetricRequest(BaseModel):
+    """Request model for recording metrics."""
+    operation_id: str
+    agent_id: str
+    operation_type: str
+    duration_ms: int
+    status: str
+    file_path: Optional[str] = None
+    lines_changed: int = 0
+    complexity_score: float = 0.0
 
 
-def _build_task_context(payload: TaskContextPayload) -> TaskContext:
-    """
-    [CREATE] Maps request context into AMES TaskContext.
-
-    Args:
-        payload (TaskContextPayload): Context describing the agent task.
-
-    Returns:
-        TaskContext: Structured context object for AMES.
-
-    Raises:
-        KeyError: When complexity labels are unknown.
-
-    Complexity:
-        Time: O(1)
-        Space: O(1)
-
-    Side Effects:
-        - None
-
-    Design Patterns:
-        - Adapter: bridges API payloads and domain models.
-
-    Thread Safety:
-        Thread-safe; uses local variables only.
-
-    Agent: GPT-5.1-Codex
-    Timestamp: 2025-12-03T15:35:00Z
-    """
-
-    task_type = TaskType(payload.task_type.value)
-    complexity = ComplexityLevel[payload.complexity.value]
-
-    return TaskContext(
-        task_type=task_type,
-        complexity=complexity,
-        language=payload.language,
-        lines_of_code=payload.lines_of_code,
-        duration_seconds=payload.duration_seconds,
-    )
+class AgentSummaryResponse(BaseModel):
+    """Response model for agent summaries."""
+    agent_id: str
+    total_operations: int
+    success_rate: Optional[float] = None
+    average_duration_ms: Optional[float] = None
+    operations_by_type: Dict[str, int] = Field(default_factory=dict)
+    recent_operations: List[Dict[str, Any]] = Field(default_factory=list)
+    message: Optional[str] = None
 
 
-def _record_operation(duration_ms: int, context: Dict[str, Any]) -> None:
-    """
-    [CREATE] Writes a telemetry operation log for evaluation requests.
-
-    Args:
-        duration_ms (int): Request processing time in milliseconds.
-        context (dict): Additional metadata for telemetry dashboards.
-
-    Complexity:
-        Time: O(1)
-        Space: O(1)
-
-    Side Effects:
-        - Persists JSON logs under CodeAgents/ID/GPT-5.1-Codex/logs.
-
-    Design Patterns:
-        - Facade: encapsulates telemetry implementation details.
-
-    Thread Safety:
-        Safe for FastAPI default workers; each call creates its own log object.
-
-    Agent: GPT-5.1-Codex
-    Timestamp: 2025-12-03T15:35:00Z
-    """
-
-    log = OperationLog(
-        agent=AGENT_NAME,
-        operation="ANALYZE",
-        target={"file": "backend/main.py", "function": "create_evaluation"},
-        status="SUCCESS",
-        duration_ms=duration_ms,
-        context=context,
-    )
-    telemetry_manager.log_operation(log)
-
+# ========================
+# Health Endpoints
+# ========================
 
 @app.get("/")
-def read_root() -> Dict[str, Any]:
-    """
-    [ANALYZE] Returns service metadata for quick smoke checks.
-
-    Returns:
-        dict: Basic information about the API instance.
-
-    Complexity:
-        Time: O(1)
-        Space: O(1)
-
-    Agent: GPT-5.1-Codex
-    Timestamp: 2025-12-03T15:35:00Z
-    """
-
+def read_root():
+    """Root endpoint with API info."""
     return {
-        "message": "Welcome to EudoraX Prototype API",
-        "uptime_seconds": (datetime.now(timezone.utc) - APP_START_TIME).total_seconds(),
+        "name": "EudoraX Prototype API",
+        "version": "1.0.0",
+        "status": "operational",
+        "timestamp": datetime.now(timezone.utc).isoformat()
     }
 
 
 @app.get("/health")
-def health_check() -> Dict[str, str]:
+def health_check():
+    """Health check endpoint."""
+    telemetry = get_telemetry_service()
+    health = telemetry.get_system_health()
+    return {
+        "status": "healthy",
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "telemetry": health
+    }
+
+
+# ========================
+# Telemetry Endpoints
+# ========================
+
+@app.post("/telemetry/events")
+def record_event(request: EventRequest):
     """
-    [ANALYZE] Reports health information for liveness probes.
-
-    Returns:
-        dict: Health status indicator.
-
-    Agent: GPT-5.1-Codex
-    Timestamp: 2025-12-03T15:35:00Z
-    """
-
-    return {"status": "healthy"}
-
-
-@app.post("/evaluation", response_model=EvaluationEnvelope)
-async def create_evaluation(payload: EvaluationRequest) -> EvaluationEnvelope:
-    """
-    [CREATE] Runs the AMES composite scoring pipeline.
-
+    Record a telemetry event.
+    
     Args:
-        payload (EvaluationRequest): Incoming metrics and context.
-
+        request: Event data including type, agent_id, and payload
+        
     Returns:
-        EvaluationEnvelope: Identifier, timestamp, and score payload.
-
-    Raises:
-        HTTPException: If AMES rejects the provided data.
-
-    Example:
-        >>> await create_evaluation(EvaluationRequest(...))
-
-    Complexity:
-        Time: O(1)
-        Space: O(1)
-
-    Side Effects:
-        - Appends to in-memory history.
-        - Persists telemetry logs.
-
-    Design Patterns:
-        - Service Layer: encapsulates evaluation orchestration.
-
-    Thread Safety:
-        Safe under AsyncIO; mutations occur on FastAPI worker event loop.
-
-    Agent: GPT-5.1-Codex
-    Timestamp: 2025-12-03T15:35:00Z
+        Event ID and confirmation
     """
+    telemetry = get_telemetry_service()
+    
+    event = TelemetryEvent(
+        event_type=request.event_type,
+        agent_id=request.agent_id,
+        data=request.data,
+        metadata=request.metadata
+    )
+    
+    event_id = telemetry.record_event(event)
+    
+    return {
+        "status": "recorded",
+        "event_id": event_id,
+        "timestamp": event.timestamp
+    }
 
-    start = datetime.now(timezone.utc)
 
+@app.post("/telemetry/metrics")
+def record_metric(request: MetricRequest):
+    """
+    Record an operation metric.
+    
+    Args:
+        request: Metric data including operation details and performance
+        
+    Returns:
+        Metric ID and confirmation
+    """
+    telemetry = get_telemetry_service()
+    
     try:
-        scores = _build_metric_scores(payload.metrics)
-        context = _build_task_context(payload.context)
-        result_dict = agent_evaluator.calculate_composite_score(scores, context)
-    except ValueError as exc:
-        raise HTTPException(status_code=422, detail=str(exc)) from exc
-
-    recorded_at = datetime.now(timezone.utc)
-    envelope = EvaluationEnvelope(
-        evaluation_id=uuid4(),
-        recorded_at=recorded_at,
-        result=EvaluationResult(**result_dict),
+        operation_type = OperationType(request.operation_type.upper())
+    except ValueError:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid operation_type: {request.operation_type}. "
+                   f"Must be one of: {[e.value for e in OperationType]}"
+        )
+    
+    try:
+        status = OperationStatus(request.status.upper())
+    except ValueError:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid status: {request.status}. "
+                   f"Must be one of: {[e.value for e in OperationStatus]}"
+        )
+    
+    metric = OperationMetric(
+        operation_id=request.operation_id,
+        agent_id=request.agent_id,
+        operation_type=operation_type,
+        duration_ms=request.duration_ms,
+        status=status,
+        file_path=request.file_path,
+        lines_changed=request.lines_changed,
+        complexity_score=request.complexity_score
     )
-    evaluation_history.append(envelope)
-
-    duration_ms = int((recorded_at - start).total_seconds() * 1000)
-    _record_operation(
-        duration_ms,
-        {
-            "task_type": payload.context.task_type.value,
-            "complexity": payload.context.complexity.value,
-            "language": payload.context.language,
-        },
-    )
-
-    return envelope
+    
+    metric_id = telemetry.record_metric(metric)
+    
+    return {
+        "status": "recorded",
+        "metric_id": metric_id,
+        "timestamp": metric.timestamp
+    }
 
 
-@app.get("/evaluation/history", response_model=List[EvaluationEnvelope])
-async def get_evaluation_history(limit: int = 10) -> List[EvaluationEnvelope]:
+@app.get("/telemetry/agents/{agent_id}/summary", response_model=AgentSummaryResponse)
+def get_agent_summary(agent_id: str, limit: int = 100):
     """
-    [ANALYZE] Returns the most recent evaluation envelopes.
-
+    Get performance summary for an agent.
+    
     Args:
-        limit (int): Max number of records to return. Defaults to 10.
-
+        agent_id: The agent to summarize
+        limit: Maximum number of records to analyze
+        
     Returns:
-        list[EvaluationEnvelope]: Chronologically descending history.
-
-    Raises:
-        HTTPException: If limit is non-positive.
-
-    Complexity:
-        Time: O(n) where n equals the requested limit.
-        Space: O(n) because FastAPI serializes the slice.
-
-    Side Effects:
-        - None
-
-    Design Patterns:
-        - Query Object: exposes read-only API for stored data.
-
-    Thread Safety:
-        FastAPI ensures sequential access per request; slicing is safe.
-
-    Agent: GPT-5.1-Codex
-    Timestamp: 2025-12-03T15:35:00Z
+        Summary statistics for the agent
     """
+    telemetry = get_telemetry_service()
+    summary = telemetry.get_agent_summary(agent_id, limit)
+    return AgentSummaryResponse(**summary)
 
-    if limit <= 0:
-        raise HTTPException(status_code=400, detail="limit must be positive")
 
-    history_slice = evaluation_history[-limit:]
-    return list(reversed(history_slice))
+@app.get("/telemetry/system/health")
+def get_system_health():
+    """Get overall system health metrics."""
+    telemetry = get_telemetry_service()
+    return telemetry.get_system_health()
+
+
+# ========================
+# Agent Management Endpoints
+# ========================
+
+VALID_AGENTS = [
+    "GrokIA", "Cline", "Antigravity", "Cursor",
+    "GeminiFlash25", "GeminiPro25", "GeminiPro30",
+    "Jules", "ClaudeCode", "Composer"
+]
+
+
+@app.get("/agents")
+def list_agents():
+    """List all registered agents."""
+    return {
+        "agents": VALID_AGENTS,
+        "count": len(VALID_AGENTS)
+    }
+
+
+@app.get("/agents/{agent_id}")
+def get_agent_info(agent_id: str):
+    """Get information about a specific agent."""
+    if agent_id not in VALID_AGENTS:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Agent '{agent_id}' not found. Valid agents: {VALID_AGENTS}"
+        )
+    
+    telemetry = get_telemetry_service()
+    summary = telemetry.get_agent_summary(agent_id, limit=50)
+    
+    return {
+        "agent_id": agent_id,
+        "status": "active",
+        "summary": summary
+    }
+
+
+# ========================
+# Startup Event
+# ========================
+
+@app.on_event("startup")
+async def startup_event():
+    """Initialize services on startup."""
+    # Pre-initialize the telemetry service
+    get_telemetry_service()
+    print("✅ EudoraX Prototype API started successfully")
+
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=8000)

@@ -21,33 +21,38 @@ from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn
 from rich.table import Table
 from rich.prompt import Prompt, Confirm
 
-# Log training session reflection
-from CodeAgents.core.telemetry import telemetry, OperationLog
-
-reflection_log = OperationLog(
-    agent="GrokIA",
-    operation="ANALYZE",
-    target={"file": "Training/Level_01_Foundations", "module": "control_flow"},
-    status="SUCCESS",
-    context={
-        "training_level": "Level_01_Foundations",
-        "exercises_completed": ["variables", "if_statements"],
-        "tests_passed": True,
-        "confidence_level": 8.5,
-        "insights": [
-            "Mastered basic variable assignment and data types",
-            "Implemented conditional logic with if/elif/else statements",
-            "Understood logical operators (and, or) for eligibility checks",
-            "Applied range-based categorization for temperature system"
-        ],
-        "next_focus": "Loops and functions for iterative problem solving",
-        "timestamp": "2025-12-03T15:30:00Z"
-    },
-    duration_ms=1800000  # 30 minutes
-)
-
-telemetry.log_operation(reflection_log)
-print("Training reflection logged successfully!")
+# Lazy import for telemetry - only used when explicitly called
+def _log_reflection(agent_name: str = "GrokIA"):
+    """Log training session reflection - called explicitly, not at import time."""
+    try:
+        from CodeAgents.core.telemetry import telemetry, OperationLog
+        
+        reflection_log = OperationLog(
+            agent=agent_name,
+            operation="ANALYZE",
+            target={"file": "Training/Level_01_Foundations", "module": "control_flow"},
+            status="SUCCESS",
+            context={
+                "training_level": "Level_01_Foundations",
+                "exercises_completed": ["variables", "if_statements"],
+                "tests_passed": True,
+                "confidence_level": 8.5,
+                "insights": [
+                    "Mastered basic variable assignment and data types",
+                    "Implemented conditional logic with if/elif/else statements",
+                    "Understood logical operators (and, or) for eligibility checks",
+                    "Applied range-based categorization for temperature system"
+                ],
+                "next_focus": "Loops and functions for iterative problem solving",
+                "timestamp": datetime.now(timezone.utc).isoformat()
+            },
+            duration_ms=1800000  # 30 minutes
+        )
+        
+        telemetry.log_operation(reflection_log)
+        return True
+    except ImportError:
+        return False
 
 console = Console()
 
@@ -99,27 +104,27 @@ class TrainingSession:
     def display_welcome(self):
         """Display training session welcome."""
         welcome_text = f"""
-🤖 Agent Training System (ATS) - SkeletalMind
+Agent Training System (ATS) - SkeletalMind
 
 Agent: {self.agent_name}
 Session Start: {self.start_time.strftime('%Y-%m-%d %H:%M:%S UTC')}
 
 Today's Focus:
-• Enhanced reflection prompts
-• Multi-modal learning approaches
-• Project-based skill development
-• Adaptive difficulty progression
+* Enhanced reflection prompts
+* Multi-modal learning approaches
+* Project-based skill development
+* Adaptive difficulty progression
         """
 
         self.console.print(Panel.fit(
             welcome_text.strip(),
-            title=f"[ROCKET] Training Session - {self.agent_name}",
+            title=f"Training Session - {self.agent_name}",
             border_style="blue"
         ))
 
     def daily_reflection(self):
         """Handle daily reflection prompts."""
-        self.console.print("\n[bold cyan]📝 Daily Session Reflection[/bold cyan]")
+        self.console.print("\n[bold cyan]=== Daily Session Reflection ===[/bold cyan]")
 
         daily_starters = self.reflection_config.get('reflection_prompts', {}).get('daily_starters', [])
 
@@ -137,13 +142,13 @@ Today's Focus:
                     time.sleep(0.3)
                     progress.update(task, advance=1)
 
-            self.console.print("[green]✓ Reflection completed[/green]")
+            self.console.print("[green][OK] Reflection completed[/green]")
         else:
             self.console.print("[dim]No reflection prompts configured[/dim]")
 
     def select_training_approach(self):
         """Select and display multi-modal training approach."""
-        self.console.print("\n[bold green]🎯 Multi-Modal Training Approach[/bold green]")
+        self.console.print("\n[bold green]=== Multi-Modal Training Approach ===[/bold green]")
 
         if not self.multimodal_config.get('multi_modal_training', {}).get('enabled', False):
             self.console.print("[dim]Multi-modal training not enabled[/dim]")
@@ -203,7 +208,7 @@ Today's Focus:
 
     def project_recommendation(self):
         """Provide project-based learning recommendation."""
-        self.console.print("\n[bold magenta]🏗️ Project-Based Learning[/bold magenta]")
+        self.console.print("\n[bold magenta]=== Project-Based Learning ===[/bold magenta]")
 
         if not self.project_config:
             self.console.print("[dim]Project configurations not available[/dim]")
@@ -245,13 +250,13 @@ Today's Focus:
             if deliverables:
                 self.console.print("\n[bold]Key Deliverables:[/bold]")
                 for deliverable in deliverables[:3]:  # Show first 3
-                    self.console.print(f"  • {deliverable}")
+                    self.console.print(f"  * {deliverable}")
         else:
             self.console.print("[dim]No level 1 projects available[/dim]")
 
     def run_exercise(self):
         """Run a hands-on coding exercise."""
-        self.console.print("\n[bold yellow]💻 Hands-on Exercise[/bold yellow]")
+        self.console.print("\n[bold yellow]=== Hands-on Exercise ===[/bold yellow]")
 
         # Simulate running an exercise from the existing skeletal structure
         exercises = [
@@ -275,11 +280,11 @@ Today's Focus:
                 time.sleep(0.2)
                 progress.update(task, completed=i)
 
-        self.console.print("[green]✓ Exercise completed successfully![/green]")
+        self.console.print("[green][OK] Exercise completed successfully![/green]")
 
     def session_reflection(self):
         """Handle end-of-session reflection."""
-        self.console.print("\n[bold red]🔄 Session-End Reflection[/bold red]")
+        self.console.print("\n[bold red]=== Session-End Reflection ===[/bold red]")
 
         session_end = self.reflection_config.get('reflection_prompts', {}).get('session_end', {})
 
@@ -308,7 +313,7 @@ Today's Focus:
                 title="Skill Assessment"
             ))
 
-        self.console.print("[green]✓ Session reflection completed[/green]")
+        self.console.print("[green][OK] Session reflection completed[/green]")
 
     def session_summary(self):
         """Display session summary and achievements."""
@@ -316,43 +321,43 @@ Today's Focus:
         duration = end_time - self.start_time
 
         summary_text = f"""
-✅ Training Session Completed!
+[OK] Training Session Completed!
 
 Session Details:
-• Agent: {self.agent_name}
-• Duration: {duration.total_seconds():.1f} seconds
-• Start Time: {self.start_time.strftime('%H:%M:%S UTC')}
-• End Time: {end_time.strftime('%H:%M:%S UTC')}
+* Agent: {self.agent_name}
+* Duration: {duration.total_seconds():.1f} seconds
+* Start Time: {self.start_time.strftime('%H:%M:%S UTC')}
+* End Time: {end_time.strftime('%H:%M:%S UTC')}
 
 Key Improvements Implemented:
-• Enhanced reflection prompts system for meta-learning
-• Multi-modal training approaches (visual, interactive, kinesthetic)
-• Project-based learning with real-world scenarios
-• Adaptive difficulty progression and pacing
-• Gamified elements with achievement tracking
+* Enhanced reflection prompts system for meta-learning
+* Multi-modal training approaches (visual, interactive, kinesthetic)
+* Project-based learning with real-world scenarios
+* Adaptive difficulty progression and pacing
+* Gamified elements with achievement tracking
 
 Training Methodologies Applied:
-• Spaced repetition with SM-2 algorithm
-• Cognitive load management with interleaved practice
-• Personalized learning paths based on performance
-• Quality assessment with depth-level analysis
+* Spaced repetition with SM-2 algorithm
+* Cognitive load management with interleaved practice
+* Personalized learning paths based on performance
+* Quality assessment with depth-level analysis
 
 Next Session Recommendations:
-• Continue with project-based learning progression
-• Focus on identified knowledge gaps
-• Maintain daily reflection practice
-• Explore advanced multi-modal techniques
+* Continue with project-based learning progression
+* Focus on identified knowledge gaps
+* Maintain daily reflection practice
+* Explore advanced multi-modal techniques
         """
 
         self.console.print(Panel.fit(
             summary_text.strip(),
-            title="🎉 Session Summary",
+            title="Session Summary",
             border_style="green"
         ))
 
         # Log session to telemetry (placeholder)
-        self.console.print("\n[dim]📊 Session data logged to telemetry system[/dim]")
-        self.console.print("[dim]📈 Progress metrics updated[/dim]")
+        self.console.print("\n[dim][INFO] Session data logged to telemetry system[/dim]")
+        self.console.print("[dim][INFO] Progress metrics updated[/dim]")
 
 
 def main():
