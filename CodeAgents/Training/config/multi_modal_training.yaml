@@ -13,44 +13,44 @@ multi_modal_training:
   visual_learning:
     enabled: true
     approaches:
-      - code_diagrams: true
-      - flow_charts: true
-      - architecture_visualization: true
-      - data_structure_diagrams: true
+      code_diagrams: true
+      flow_charts: true
+      architecture_visualization: true
+      data_structure_diagrams: true
 
     tools:
-      - graphviz_diagrams: true
-      - mermaid_charts: true
-      - plantuml: true
-      - ascii_art: true
+      graphviz_diagrams: true
+      mermaid_charts: true
+      plantuml: true
+      ascii_art: true
 
   interactive_learning:
     enabled: true
     approaches:
-      - debugging_sessions: true
-      - step_through_execution: true
-      - variable_inspection: true
-      - breakpoint_analysis: true
+      debugging_sessions: true
+      step_through_execution: true
+      variable_inspection: true
+      breakpoint_analysis: true
 
     scenarios:
-      - error_tracing: true
-      - performance_optimization: true
-      - refactoring_exercises: true
-      - code_review_simulations: true
+      error_tracing: true
+      performance_optimization: true
+      refactoring_exercises: true
+      code_review_simulations: true
 
   kinesthetic_learning:
     enabled: true
     approaches:
-      - hands_on_projects: true
-      - refactoring_exercises: true
-      - optimization_challenges: true
-      - system_design_tasks: true
+      hands_on_projects: true
+      refactoring_exercises: true
+      optimization_challenges: true
+      system_design_tasks: true
 
     activities:
-      - build_from_scratch: true
-      - modify_existing_code: true
-      - performance_tuning: true
-      - debugging_real_issues: true
+      build_from_scratch: true
+      modify_existing_code: true
+      performance_tuning: true
+      debugging_real_issues: true
 
   mixed_difficulty_practice:
     enabled: true

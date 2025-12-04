@@ -23,7 +23,7 @@ from __future__ import annotations
 
 import logging
 import os
-from typing import Optional, List, Dict, Any
+from typing import Optional, List, Dict, Any, TYPE_CHECKING
 from dataclasses import dataclass
 
 import chromadb
@@ -138,5 +138,24 @@ class RAGEngine:
         """Return total number of documents."""
         return self.collection.count()
 
-# Singleton for easy access
-rag_engine = RAGEngine()
+# Lazy singleton - only created when explicitly requested
+_rag_engine: Optional["RAGEngine"] = None
+
+
+def get_rag_engine(persist_directory: str = "./chroma_db", collection_name: str = "codebase") -> RAGEngine:
+    """
+    [CREATE] Get or create the RAG engine singleton.
+    
+    Uses lazy initialization to avoid import-time side effects.
+    
+    Args:
+        persist_directory: Path for ChromaDB storage
+        collection_name: Name of the collection
+        
+    Returns:
+        RAGEngine: The singleton instance
+    """
+    global _rag_engine
+    if _rag_engine is None:
+        _rag_engine = RAGEngine(persist_directory, collection_name)
+    return _rag_engine

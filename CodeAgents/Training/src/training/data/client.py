@@ -18,7 +18,7 @@ from pathlib import Path
 from typing import Optional
 
 import chromadb
-from chromadb.api.types import Collection
+from chromadb.api.models.Collection import Collection
 
 
 DEFAULT_DB_PATH = Path("chroma_db")

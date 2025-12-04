@@ -18,7 +18,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional, Sequence
 
-from chromadb.api.types import Collection
+from chromadb.api.models.Collection import Collection
 
 from .client import ChromaDatabase
 

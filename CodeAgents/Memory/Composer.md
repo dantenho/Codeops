@@ -2,10 +2,10 @@
 
 ## 🧠 Active Context
 
-- **Current Project Phase:** Development
+- **Current Project Phase:** Training & Development
 - **Active Branch:** main
-- **Last Task ID:** training-orchestration-upgrade
-- **Current Focus:** Clean up duplicate training assets, restructure DB access, and expose diagnostics tooling.
+- **Last Task ID:** training-session-init
+- **Current Focus:** Completed initial training session, analyzing codebase structure, reinforcing Agents.MD protocols.
 
 ## 📚 Learned Protocols
 >
@@ -24,6 +24,8 @@
 | 2025-12-03 | Added GPU + per-token metrics to score docs  | Provide comparable telemetry across agents before merge reviews           | `cli._run_training_session` |
 | 2025-12-03 | Created `training diagnostics` + report cmds | Needed structured analysis of metrics/logs/errors per Agents.MD checklist | `cli.diagnostics`, `structure-report` |
 | 2025-12-03 | Implemented file + memory dedupe command     | Clear duplicate training artifacts produced by previous agents            | `cli.dedupe`, `utils/dedupe.py` |
+| 2025-12-04 | Completed initial training session           | Reinforce Agents.MD protocols, understand training system architecture    | `train_session.py`, telemetry logging |
+| 2025-12-04 | Used UV for environment setup                | Follow Agents.MD protocol - UV is mandatory, faster than pip             | `.venv` setup, dependency installation |
 
 ## 🧩 Recurring Patterns & Snippets
 
