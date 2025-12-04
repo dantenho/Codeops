@@ -14,7 +14,7 @@ from datetime import date, datetime, timedelta, timezone
 
 import pytest
 
-from training.models import (
+from src.training.models import (
     ActivityResult,
     ActivityStatus,
     ActivityType,
