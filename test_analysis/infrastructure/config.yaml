@@ -1,0 +1,52 @@
+"""
+# Test Runner Configuration
+# File: test_analysis/infrastructure/config.yaml
+
+test_execution:
+  test_directory: "CodeAgents/Training/tests"
+  test_files:
+    - "test_models.py"
+    - "test_spaced_repetition.py"
+  output_directory: "test_analysis/execution"
+  timeout_seconds: 300
+  pytest_options:
+    - "-v"
+    - "--tb=short"
+    - "--strict-markers"
+    - "--cov=CodeAgents/Training/src/training"
+    - "--cov-report=term-missing"
+    - "--cov-report=json"
+    - "--cov-fail-under=50"
+
+environment:
+  python_version: ">=3.11"
+  required_packages:
+    - pytest
+    - pydantic
+    - pyyaml
+    - chromadb
+  pythonpath_additions:
+    - "CodeAgents/Training/src"
+
+reporting:
+  formats:
+    - json
+    - markdown
+    - html
+  include_environment: true
+  include_individual_results: true
+  max_output_length: 5000
+
+analysis:
+  coverage_threshold: 50
+  check_imports: true
+  check_fixtures: true
+  generate_structure_diagrams: false
+
+logging:
+  level: "INFO"
+  format: "%(asctime)s - %(levelname)s - %(message)s"
+  file: "test_analysis/execution/test_runner.log"
+"""
+
+

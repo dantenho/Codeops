@@ -22,14 +22,19 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
-from CodeAgents.core.metrics import (
+import sys
+from pathlib import Path
+# Add core package to path
+core_path = Path(__file__).parent.parent.parent / "core" / "src"
+sys.path.insert(0, str(core_path))
+from metrics import (
     AgentEvaluator,
     ComplexityLevel,
     MetricScores,
     TaskContext,
     TaskType,
 )
-from CodeAgents.core.telemetry import OperationLog, TelemetryManager
+from telemetry import OperationLog, TelemetryManager
 
 AGENT_NAME = "GPT-5.1-Codex"
 APP_START_TIME = datetime.now(timezone.utc)
@@ -353,11 +358,23 @@ async def create_evaluation(payload: EvaluationRequest) -> EvaluationEnvelope:
     try:
         scores = _build_metric_scores(payload.metrics)
         context = _build_task_context(payload.context)
-        result_dict = agent_evaluator.calculate_composite_score(scores, context)
+        evaluation_result = agent_evaluator.calculate_composite_score(scores, context)
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
 
     recorded_at = datetime.now(timezone.utc)
+    # Convert EvaluationResult dataclass to dict for Pydantic model
+    result_dict = {
+        "composite_score": evaluation_result.composite_score,
+        "base_score": evaluation_result.base_score,
+        "complexity_bonus": evaluation_result.complexity_bonus,
+        "language_modifier": evaluation_result.language_modifier,
+        "grade": evaluation_result.grade,
+        "percentile": evaluation_result.percentile,
+        "adjusted_scores": evaluation_result.adjusted_scores,
+        "context": evaluation_result.context,
+        "breakdown": evaluation_result.breakdown,
+    }
     envelope = EvaluationEnvelope(
         evaluation_id=uuid4(),
         recorded_at=recorded_at,

@@ -39,6 +39,9 @@ except ImportError:
 
 logger = logging.getLogger("core.rag")
 
+# Global singleton instance
+_rag_engine: Optional["RAGEngine"] = None
+
 @dataclass
 class SearchResult:
     """
@@ -138,5 +141,19 @@ class RAGEngine:
         """Return total number of documents."""
         return self.collection.count()
 
-# Singleton for easy access
-rag_engine = RAGEngine()
+
+def get_rag_engine(persist_directory: str = "./chroma_db", collection_name: str = "codebase") -> RAGEngine:
+    """
+    [CREATE] Get or create the singleton RAG engine instance.
+    
+    Args:
+        persist_directory: Where to store the database.
+        collection_name: Name of the collection to use.
+        
+    Returns:
+        RAGEngine: The singleton RAG engine instance.
+    """
+    global _rag_engine
+    if _rag_engine is None:
+        _rag_engine = RAGEngine(persist_directory=persist_directory, collection_name=collection_name)
+    return _rag_engine

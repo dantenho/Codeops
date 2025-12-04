@@ -20,7 +20,7 @@ from .optimization_catalog import CatalogEntry, OptimizationCatalog
 from .optimization_detector import DetectedOptimization, OptimizationDetector
 
 try:  # Memory service is optional – only available in training package.
-    from CodeAgents.Training.src.training.services.memory_service import MemoryService  # type: ignore
+    from packages.training.src.training.services.memory_service import MemoryService  # type: ignore
 except Exception:  # pragma: no cover - fallback for environments without training pkg
     MemoryService = None  # type: ignore
 

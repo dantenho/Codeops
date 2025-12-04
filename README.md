@@ -39,8 +39,8 @@ uv pip install -r requirements.txt
 ### Basic Usage
 
 ```python
-from core.telemetry import TelemetryManager
-from core.rag import RAGEngine
+from eudorax.core.telemetry import TelemetryManager
+from eudorax.core.rag import RAGEngine
 
 # Initialize telemetry
 telemetry = TelemetryManager(agent_name="MyAgent")
@@ -114,18 +114,23 @@ See [`Agents.MD`](Agents.MD) for complete protocol documentation.
 ## Project Structure
 
 ```
-urb/
-├── agents/              # Agent implementations
-├── core/                # Core system modules
-├── training/            # Training system
-├── evaluation/          # Quality gates and metrics
-├── github/              # GitHub integration
-├── skeleton-generator/  # Agent skeleton generation
-├── schemas/             # JSON schemas
-├── config/              # Configuration files
-├── docs/                # Documentation
-├── backend/             # Backend API
-└── workflow-project/    # Workflow automation
+CodeAgents/
+├── packages/                    # Modern workspace packages
+│   ├── core/                   # Core system modules (telemetry, RAG, metrics)
+│   ├── training/               # Training system with token tracking
+│   ├── evaluation/             # Quality gates and code evaluation
+│   ├── github-integration/     # GitHub PR optimization
+│   ├── error-intelligence/     # Error diagnosis and self-healing
+│   ├── vibecode/               # Natural language code generation
+│   ├── backend-api/            # FastAPI backend
+│   ├── memory/                 # Memory management
+│   └── skeleton-generator/     # Agent skeleton generation
+├── CodeAgents/                 # Agent runtime data (logs, analysis)
+├── config/                     # Configuration files
+├── docs/                       # Documentation
+├── tests/                      # Test suite
+├── structures/                 # Agent skeleton templates
+└── scripts/                    # Utility scripts
 ```
 
 ## Development
@@ -165,7 +170,7 @@ telemetry.log_operation(
 
 1. Generate skeleton structure:
 ```bash
-python skeleton-generator/scripts/complete_skeleton_generator.py --agent-id MyAgent
+python packages/skeleton-generator/scripts/complete_skeleton_generator.py --agent-id MyAgent
 ```
 
 2. Create memory file at `CodeAgents/Memory/MyAgent.md`
@@ -181,6 +186,7 @@ python skeleton-generator/scripts/complete_skeleton_generator.py --agent-id MyAg
 - [`docs/DATABASE.md`](docs/DATABASE.md) - Database schemas
 - [`docs/WORKFLOWS.md`](docs/WORKFLOWS.md) - Workflow documentation
 - [`CONTRIBUTING.md`](CONTRIBUTING.md) - Contribution guidelines
+- [`PROJECT_STATUS.md`](PROJECT_STATUS.md) - Current project status and roadmap
 
 ## License
 

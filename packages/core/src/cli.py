@@ -15,7 +15,7 @@ from pathlib import Path
 project_root = Path(__file__).parent.parent.parent
 sys.path.append(str(project_root))
 
-from CodeAgents.core.skeleton_generator import create_skeleton_generator
+from .skeleton_generator import create_skeleton_generator
 
 def main():
     parser = argparse.ArgumentParser(description="CodeAgents Skeleton Generator CLI")

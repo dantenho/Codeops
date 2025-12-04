@@ -136,9 +136,9 @@ See [`docs/WORKFLOWS.md`](docs/WORKFLOWS.md) for how GitHub Actions mirrors thes
 | **Black** | Formatting | `black .` |
 | **isort** | Import sorting | `isort .` |
 | **Ruff** | Linting + quick fixes | `ruff check . --fix` |
-| **MyPy** | Static typing | `mypy tools/Pylorix/` |
-| **Pydocstyle** | Docstring style | `pydocstyle --convention=google tools/Pylorix/` |
-| **Interrogate** | Docstring coverage | `interrogate -v -i --fail-under=70 tools/Pylorix/` |
+| **MyPy** | Static typing | `mypy packages/` |
+| **Pydocstyle** | Docstring style | `pydocstyle --convention=google packages/` |
+| **Interrogate** | Docstring coverage | `interrogate -v -i --fail-under=70 packages/` |
 
 CI enforces the same stack; use `pre-commit run --all-files` for a single pass.
 
@@ -156,8 +156,8 @@ CI enforces the same stack; use `pre-commit run --all-files` for a single pass.
 Docstring snippet:
 
 ```python
-def process_image(image_path: str, model: str = "FLUX.2-dev") -> dict:
-    """Run generative pass over an image and capture metadata."""
+def process_data(input_path: Path, output_format: str = "json") -> dict[str, Any]:
+    """Process data from file with configurable options."""
 ```
 
 ---
@@ -168,9 +168,9 @@ def process_image(image_path: str, model: str = "FLUX.2-dev") -> dict:
 | --- | --- | --- | --- |
 | Unit | `tests/` | `pytest` | Default target; keep fast. |
 | Targeted | `tests/test_x.py::case` | `pytest tests/test_x.py -k case` | Use during TDD loops. |
-| CodeAgents Training | `CodeAgents/Training/tests` | `PYTHONPATH=".:CodeAgents/Training/src" uv run pytest CodeAgents/Training/tests -v` | Validates CLI, models, spaced repetition, and Threndia services end-to-end. |
-| CodeAgents GitHub | `CodeAgents/GitHub/tests` | `uv run pytest CodeAgents/GitHub/tests -v` | Keeps the optimization catalog + detector contract healthy. |
-| Coverage | `tools/Pylorix` | `pytest --cov=tools/Pylorix --cov-report=html` | Ensure new logic is exercised. |
+| Training | `packages/training/tests` | `uv run pytest packages/training/tests -v` | Validates CLI, models, spaced repetition, and Threndia services end-to-end. |
+| GitHub Integration | `packages/github-integration/tests` | `uv run pytest packages/github-integration/tests -v` | Keeps the optimization catalog + detector contract healthy. |
+| Coverage | `packages/` | `pytest --cov=packages --cov-report=html` | Ensure new logic is exercised. |
 | Integration | Marked with `@pytest.mark.integration` | `pytest -m integration` | Guard with env checks (e.g., Supabase). |
 
 Expectations:

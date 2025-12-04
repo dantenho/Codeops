@@ -205,7 +205,7 @@ The skeleton generator is designed to work seamlessly with the existing EudoraX 
 
 ```python
 # Integrate with EudoraX training system
-from CodeAgents.Training.train_session import TrainingSession
+from packages.training.train_session import TrainingSession
 
 # Load generated training config
 with open("grokia/20251203_153700/training/config.yaml") as f:

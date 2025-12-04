@@ -14,7 +14,7 @@ from datetime import date, timedelta
 
 import pytest
 
-from training.models import (
+from src.training.models import (
     Flashcard,
     FlashcardBack,
     FlashcardCategory,
@@ -22,7 +22,7 @@ from training.models import (
     ReviewRating,
     SpacedRepetitionData,
 )
-from training.services.spaced_repetition import SM2SpacedRepetition
+from src.training.services.spaced_repetition import SM2SpacedRepetition
 
 
 class TestSM2Algorithm:
