@@ -11,7 +11,8 @@ try:
     import sys
     from pathlib import Path
     # Add packages to path for testing
-    sys.path.insert(0, str(Path(__file__).parent.parent / "packages" / "core" / "src"))
+    core_path = Path(__file__).parent.parent / "packages" / "core" / "src"
+    sys.path.insert(0, str(core_path))
     from vector_store import VectorStore, VectorStoreConfig
     from rag import RAGEngine
 except ImportError as e:
