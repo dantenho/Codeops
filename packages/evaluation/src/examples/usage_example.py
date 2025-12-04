@@ -165,7 +165,7 @@ def process_data(data):
     gate = get_quality_gate("commit")
 
     # Create mock evaluation result
-    from packages.evaluation.src.core.evaluator import EvaluationResult, EvaluationContext
+    from evaluation.core.evaluator import EvaluationResult, EvaluationContext
 
     result = EvaluationResult(
         evaluation_id="test",

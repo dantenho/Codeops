@@ -9,15 +9,9 @@ from pathlib import Path
 import pytest
 from typer.testing import CliRunner
 
-<<<<<<< Current (Your changes)
 from packages.training.src.training import cli as training_cli
 from packages.training.src.training.data.progress_repository import ProgressRepository
 from packages.training.src.training.services.token_tracker import TokenTracker
-=======
-from eudorax.training import cli as training_cli
-from eudorax.training.data.progress_repository import ProgressRepository
-from eudorax.training.services.token_tracker import TokenTracker
->>>>>>> Incoming (Background Agent changes)
 
 
 class _MemoryStub:

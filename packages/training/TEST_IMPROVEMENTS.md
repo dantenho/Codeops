@@ -151,7 +151,7 @@ from pathlib import Path
 import tempfile
 import json
 
-from CodeAgents.core.access_control import (
+from packages.core.src.access_control import (
     AccessControlManager,
     PermissionLevel,
     ResourceType,

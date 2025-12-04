@@ -15,11 +15,7 @@ from pathlib import Path
 project_root = Path(__file__).parent.parent.parent
 sys.path.append(str(project_root))
 
-<<<<<<< Current (Your changes)
-from packages.core.src.skeleton_generator import create_skeleton_generator
-=======
 from .skeleton_generator import create_skeleton_generator
->>>>>>> Incoming (Background Agent changes)
 
 def main():
     parser = argparse.ArgumentParser(description="CodeAgents Skeleton Generator CLI")
