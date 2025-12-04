@@ -39,23 +39,21 @@ uv pip install -r requirements.txt
 ### Basic Usage
 
 ```python
-from CodeAgents.core.telemetry import TelemetryManager, OperationLog
-from CodeAgents.core.rag import RAGEngine, get_rag_engine
+from eudorax.core.telemetry import TelemetryManager
+from eudorax.core.rag import RAGEngine
 
 # Initialize telemetry
-telemetry = TelemetryManager()
+telemetry = TelemetryManager(agent_name="MyAgent")
 
 # Log an operation
-log = OperationLog(
-    agent="MyAgent",
+telemetry.log_operation(
     operation="CREATE",
     target={"file": "example.py"},
     status="SUCCESS"
 )
-telemetry.log_operation(log)
 
 # Initialize RAG engine
-rag = get_rag_engine(collection_name="codebase_knowledge")
+rag = RAGEngine(collection_name="codebase_knowledge")
 rag.index_document("example.py", content="...")
 results = rag.search("function definition", top_k=5)
 ```
@@ -64,7 +62,7 @@ results = rag.search("function definition", top_k=5)
 
 ### Core Modules
 
-- **`CodeAgents/core/`** - Core system modules
+- **`core/`** - Core system modules
   - `telemetry.py` - Structured logging system
   - `rag.py` - RAG engine with ChromaDB
   - `skeleton_generator.py` - Agent structure generator
@@ -74,38 +72,31 @@ results = rag.search("function definition", top_k=5)
 
 ### Agents
 
-- **`CodeAgents/{AgentName}/`** - Per-agent directories
-  - `logs/` - Operation telemetry
-  - `errors/` - Error logs
-  - `analysis/` - Analysis reports
+- **`agents/composer/`** - Composer agent with analysis tools
+- **`agents/deepseek-r1/`** - DeepSeekR1 telemetry and analysis
+- **`agents/gpt-5-codex/`** - GPT-5.1-Codex implementation
+- **`agents/claude-code/`** - Claude Code agent
 
 ### Training System
 
-- **`CodeAgents/Training/`** - Structured learning paths
+- **`training/`** - Structured learning paths
   - Progressive training levels (01-05)
   - Assessment and progress tracking
   - Knowledge extraction and memory persistence
 
 ### Evaluation
 
-- **`CodeAgents/Evaluation/`** - Quality gates and metrics
+- **`evaluation/`** - Quality gates and metrics
   - Code quality validation
   - Performance benchmarking
   - Compliance checking
 
 ### GitHub Integration
 
-- **`CodeAgents/GitHub/`** - GitHub optimization detection
+- **`github/`** - GitHub optimization detection
   - Comment processing
   - Optimization pattern detection
   - Code improvement suggestions
-
-### Backend API
-
-- **`CodeAgents/backend/`** - FastAPI backend server
-  - Evaluation endpoints
-  - Telemetry endpoints
-  - Health checks
 
 ## Agent Protocol
 
@@ -124,22 +115,22 @@ See [`Agents.MD`](Agents.MD) for complete protocol documentation.
 
 ```
 CodeAgents/
-├── core/                # Core system modules
-├── Training/            # Training system
-├── Evaluation/         # Quality gates and metrics
-├── GitHub/              # GitHub integration
-├── Errors/              # Error intelligence
-├── VibeCode/            # Vibe coding engine
-├── backend/             # Backend API
-├── Memory/              # Agent memory files
-├── schemas/             # JSON schemas
-└── {AgentName}/         # Per-agent directories
-
-config/                  # Configuration files
-docs/                    # Documentation
-tests/                   # Test files
-scripts/                  # Utility scripts
-Structures/              # Agent templates
+├── packages/                    # Modern workspace packages
+│   ├── core/                   # Core system modules (telemetry, RAG, metrics)
+│   ├── training/               # Training system with token tracking
+│   ├── evaluation/             # Quality gates and code evaluation
+│   ├── github-integration/     # GitHub PR optimization
+│   ├── error-intelligence/     # Error diagnosis and self-healing
+│   ├── vibecode/               # Natural language code generation
+│   ├── backend-api/            # FastAPI backend
+│   ├── memory/                 # Memory management
+│   └── skeleton-generator/     # Agent skeleton generation
+├── CodeAgents/                 # Agent runtime data (logs, analysis)
+├── config/                     # Configuration files
+├── docs/                       # Documentation
+├── tests/                      # Test suite
+├── structures/                 # Agent skeleton templates
+└── scripts/                    # Utility scripts
 ```
 
 ## Development
@@ -179,7 +170,7 @@ telemetry.log_operation(
 
 1. Generate skeleton structure:
 ```bash
-python skeleton-generator/scripts/complete_skeleton_generator.py --agent-id MyAgent
+python packages/skeleton-generator/scripts/complete_skeleton_generator.py --agent-id MyAgent
 ```
 
 2. Create memory file at `CodeAgents/Memory/MyAgent.md`
@@ -195,6 +186,7 @@ python skeleton-generator/scripts/complete_skeleton_generator.py --agent-id MyAg
 - [`docs/DATABASE.md`](docs/DATABASE.md) - Database schemas
 - [`docs/WORKFLOWS.md`](docs/WORKFLOWS.md) - Workflow documentation
 - [`CONTRIBUTING.md`](CONTRIBUTING.md) - Contribution guidelines
+- [`PROJECT_STATUS.md`](PROJECT_STATUS.md) - Current project status and roadmap
 
 ## License
 

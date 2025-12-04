@@ -5,8 +5,9 @@ Unit tests for the OptimizationService orchestration layer.
 from __future__ import annotations
 
 from pathlib import Path
-
-from packages.github-integration.src.optimization_service import OptimizationService
+import sys
+sys.path.insert(0, str(Path(__file__).parent.parent))
+from optimization_service import OptimizationService
 
 
 def _make_service(tmp_path: Path) -> OptimizationService:

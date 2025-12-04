@@ -9,9 +9,11 @@ Demonstrates how to use the code evaluation system for:
 """
 
 from pathlib import Path
-from packages.evaluation.src.core.evaluator import CodeEvaluator
-from packages.evaluation.src.metrics.code_quality import analyze_code_quality
-from packages.evaluation.src.gates.quality_gate import (
+import sys
+sys.path.insert(0, str(Path(__file__).parent.parent.parent))
+from evaluation.core.evaluator import CodeEvaluator
+from evaluation.metrics.code_quality import analyze_code_quality
+from evaluation.gates.quality_gate import (
     get_quality_gate,
     check_quality_gate,
     create_gate_report,

@@ -1,3 +1,0 @@
-Testing DefaultEmbeddingFunction...
-DefaultEmbeddingFunction created.
-Embeddings generated: 1

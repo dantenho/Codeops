@@ -20,15 +20,7 @@ classifiers = [
 
 [tool.uv.workspace]
 members = [
-    "packages/core",
-    "packages/training",
-    "packages/evaluation",
-    "packages/github-integration",
-    "packages/error-intelligence",
-    "packages/vibecode",
-    "packages/memory",
-    "packages/backend-api",
-    "packages/skeleton-generator",
+    "CodeAgents/Training",
 ]
 
 [tool.uv]

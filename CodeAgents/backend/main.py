@@ -22,14 +22,14 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
-from eudorax.core.metrics import (
+from CodeAgents.core.metrics import (
     AgentEvaluator,
     ComplexityLevel,
     MetricScores,
     TaskContext,
     TaskType,
 )
-from eudorax.core.telemetry import OperationLog, TelemetryManager
+from CodeAgents.core.telemetry import OperationLog, TelemetryManager
 
 AGENT_NAME = "GPT-5.1-Codex"
 APP_START_TIME = datetime.now(timezone.utc)
@@ -268,7 +268,7 @@ def _record_operation(duration_ms: int, context: Dict[str, Any]) -> None:
     log = OperationLog(
         agent=AGENT_NAME,
         operation="ANALYZE",
-        target={"file": "backend/main.py", "function": "create_evaluation"},
+        target={"file": "CodeAgents/backend/main.py", "function": "create_evaluation"},
         status="SUCCESS",
         duration_ms=duration_ms,
         context=context,

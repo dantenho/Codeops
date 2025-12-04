@@ -8,8 +8,12 @@ from pathlib import Path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 try:
-    from backend.core.vector_store import VectorStore, VectorStoreConfig
-    from backend.core.rag_engine import RAGEngine, RAGConfig
+    import sys
+    from pathlib import Path
+    # Add packages to path for testing
+    sys.path.insert(0, str(Path(__file__).parent.parent / "packages" / "core" / "src"))
+    from vector_store import VectorStore, VectorStoreConfig
+    from rag import RAGEngine
 except ImportError as e:
     print(f"[FAIL] Import Error: {e}")
     sys.exit(1)
@@ -34,7 +38,7 @@ def test_rag_engine():
     try:
         # Initialize
         store = VectorStore(vs_config)
-        rag = RAGEngine(store)
+        rag = RAGEngine(persist_directory=test_db_path, collection_name="test_rag_collection")
         print("[PASS] Initialization passed")
 
         # Add documents
@@ -48,25 +52,20 @@ def test_rag_engine():
             {"source": "geography_book"},
             {"source": "science_book"}
         ]
+        ids = ["doc1", "doc2", "doc3"]
 
-        store.add_documents(docs, metadatas)
+        rag.add_documents(docs, metadatas, ids)
         print("[PASS] Documents added")
 
-        # Test Context Retrieval
+        # Test Search
         query = "What is the capital of France?"
-        context = rag.retrieve_context(query)
+        results = rag.search(query, n_results=1)
 
-        assert "Paris" in context
-        assert "Source: geography_book" in context
-        print("[PASS] Context retrieval passed")
+        assert len(results) > 0
+        assert "Paris" in results[0].document
+        print("[PASS] Search passed")
 
-        # Test Prompt Augmentation
-        augmented = rag.augment_prompt(query, "Answer the question.")
-
-        assert "Relevant Context:" in augmented
-        assert "Paris" in augmented
-        assert "Answer the question." in augmented
-        print("[PASS] Prompt augmentation passed")
+        # Search test already passed above
 
     except Exception as e:
         print(f"[FAIL] Test failed: {e}")

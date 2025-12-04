@@ -8,7 +8,12 @@ from pathlib import Path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 try:
-    from backend.core.vector_store import VectorStore, VectorStoreConfig
+<<<<<<< Current (Your changes)
+    from CodeAgents.core.rag import RAGEngine, get_rag_engine
+    # Note: VectorStore functionality is now part of RAGEngine
+=======
+    from eudorax.core.vector_store import VectorStore, VectorStoreConfig
+>>>>>>> Incoming (Background Agent changes)
 except ImportError as e:
     print(f"[FAIL] Import Error: {e}")
     sys.exit(1)

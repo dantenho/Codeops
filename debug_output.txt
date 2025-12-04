@@ -1,6 +1,0 @@
-C:\Users\Dante\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.12_qbz5n2kfra8p0\LocalCache\local-packages\Python312\site-packages\transformers\utils\hub.py:110: FutureWarning: Using `TRANSFORMERS_CACHE` is deprecated and will be removed in v5 of Transformers. Use `HF_HOME` instead.
-  warnings.warn(
-Importing embedding functions...
-Imported embedding_functions.
-Embedding function created.
-Embeddings generated: 1

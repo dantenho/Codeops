@@ -9,7 +9,7 @@ from dataclasses import asdict
 # Add project root to path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from CodeAgents.core.telemetry import telemetry, OperationLog, ErrorLog
+from eudorax.core.telemetry import telemetry, OperationLog, ErrorLog
 
 def test_telemetry_structure():
     print("Testing Telemetry System...")
