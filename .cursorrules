@@ -1,0 +1,51 @@
+# Cursor AI Cooperation Rules
+
+## Worktree Assignments
+
+| Worktree | Focus Area | Branch |
+|----------|------------|--------|
+| `cursor-frontend` | UI, React, CSS, Components | cursor-frontend |
+| `cursor-backend` | API, Database, Services | cursor-backend |
+| `cursor-testing` | Tests, QA, CI/CD | cursor-testing |
+
+## Tunneling Protocol
+
+### Message Types
+- `task` - Delegate work to another agent
+- `response` - Reply to a task
+- `sync` - State synchronization
+- `heartbeat` - Agent alive signal
+
+### Usage
+```python
+from tunnel import Tunnel
+
+# Initialize as Cursor
+tunnel = Tunnel("cursor")
+
+# Check for tasks from Gemini
+messages = tunnel.receive()
+
+# Send response
+tunnel.send("gemini", {"status": "completed", "file": "login.py"})
+```
+
+### Shared State
+Located at `.tunnel/shared_state.json` - used for coordination.
+
+## Guidelines
+
+1. **Stay in your worktree** - Only modify files in your assigned branch
+2. **Communicate via tunnel** - Use `.tunnel/` for async messages
+3. **Sync before merge** - Broadcast sync message before merging to main
+4. **Heartbeat** - Send heartbeat every 5 minutes when active
+
+## Paths
+
+```
+X.worktrees/
+├── CodeAgents/          # Gemini (main)
+├── cursor-frontend/     # Cursor Frontend
+├── cursor-backend/      # Cursor Backend
+└── cursor-testing/      # Cursor Testing
+```
