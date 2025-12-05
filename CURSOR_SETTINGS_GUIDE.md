@@ -10,6 +10,7 @@
 ## Table of Contents
 
 - [Settings Locations](#settings-locations)
+- [File Patterns](#file-patterns)
 - [Core Configuration](#core-configuration)
 - [Agent Rules](#agent-rules)
 - [GitHub Integration](#github-integration)
@@ -38,6 +39,46 @@
 | `.cursorrules` | Project-level agent instructions |
 | `.cursor/rules/*.mdc` | Modular rule definitions |
 | `~/.cursor/rules/` | Global user rules |
+
+## File Patterns
+
+### Configuration Files
+
+| Pattern | Purpose | Location |
+|---------|---------|----------|
+| `.cursorrules` | Project agent rules | Project root |
+| `.cursor/rules/*.mdc` | Modular rules (language-specific) | `.cursor/rules/` |
+| `.vscode/settings.json` | Workspace settings | `.vscode/` |
+| `.vscode/tasks.json` | Build tasks and automation | `.vscode/` |
+| `.vscode/*.code-snippets` | Code snippets (language-specific) | `.vscode/` |
+| `schemas/*.schema.json` | JSON schemas for validation | `schemas/` |
+
+### File Structure
+
+```
+project-root/
+├── .cursorrules              # Project-level agent rules
+├── .cursor/
+│   └── rules/
+│       ├── python.mdc        # Python-specific rules
+│       ├── git.mdc           # Git workflow rules
+│       └── telemetry.mdc     # Telemetry rules
+├── .vscode/
+│   ├── settings.json         # Workspace settings
+│   ├── tasks.json            # Build tasks
+│   ├── extensions.json       # Recommended extensions
+│   ├── python.code-snippets  # Python snippets
+│   └── *.code-snippets       # Other language snippets
+└── schemas/
+    ├── agents.schema.json    # Agent configuration schema
+    └── task.schema.json      # Task definition schema
+```
+
+### File Naming Conventions
+
+- **Rules files:** `{language}.mdc` (e.g., `python.mdc`, `git.mdc`)
+- **Snippet files:** `{language}.code-snippets` (e.g., `python.code-snippets`)
+- **Schema files:** `{name}.schema.json` (e.g., `agents.schema.json`)
 
 ---
 
@@ -457,11 +498,17 @@ git push origin branch-name
 
 ### File Locations
 
-- **Workspace Settings:** `.vscode/settings.json`
-- **Python Snippets:** `.vscode/python.code-snippets`
-- **Agent Rules:** `.cursorrules`
-- **Git Config Template:** `.gitconfig.local`
-- **Git Local Branches Guide:** `GIT_LOCAL_BRANCHES.md`
+| File | Location | Purpose |
+|------|----------|---------|
+| Workspace Settings | `.vscode/settings.json` | Project-specific IDE settings |
+| Python Snippets | `.vscode/python.code-snippets` | Python code templates |
+| Agent Rules | `.cursorrules` | Project-level agent instructions |
+| Python Rules | `.cursor/rules/python.mdc` | Python-specific coding rules |
+| Extensions | `.vscode/extensions.json` | Recommended VS Code extensions |
+| Tasks | `.vscode/tasks.json` | Build and automation tasks |
+| JSON Schemas | `schemas/*.schema.json` | JSON validation schemas |
+| Git Config Template | `.gitconfig.local` | Git configuration template |
+| Git Guide | `GIT_LOCAL_BRANCHES.md` | Git local branches documentation |
 
 ---
 

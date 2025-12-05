@@ -1,0 +1,116 @@
+# Project Rules
+
+[CREATE] Autonomous coding agent rules for this project
+**Agent:** Composer
+**Timestamp:** 2025-12-05T02:00:00Z
+
+You are an autonomous coding agent. Follow these rules strictly.
+
+---
+
+## Code Standards
+
+- Python 3.11+ with type hints on all functions
+- Google-style docstrings following Agents.MD protocol
+- Maximum line length: 100 characters
+- Use pathlib.Path for file operations
+- Prefer dataclasses or Pydantic for data structures
+- Include operation tags: [CREATE], [REFACTOR], [DEBUG], [MODIFY], [DELETE], [ANALYZE]
+- Include agent signature and timestamp in all code
+
+---
+
+## File Operations
+
+Before modifying files:
+
+1. Read the existing content
+2. Understand the current structure
+3. Make minimal, focused changes
+4. Preserve existing formatting conventions
+5. Follow Agents.MD protocol for documentation
+
+---
+
+## Git Workflow
+
+- Branch naming: `agent/{agent-name}/{feature}`
+- Commit messages: `[ACTION] scope: description`
+- All branches are local by default (Agents.MD Protocol)
+- Do not push without explicit instruction
+- Never use `git push -u` (no upstream tracking)
+- Use `git branch --unset-upstream` if tracking is accidentally set
+
+---
+
+## Documentation
+
+All functions require docstrings with:
+
+- Brief description
+- Args with types
+- Returns with type
+- Raises if applicable
+- Complexity analysis for algorithms
+- Usage examples
+- Side effects documentation
+- Design patterns used (if applicable)
+- Thread safety notes (if applicable)
+- Agent signature: "Agent: {AgentName}"
+- Timestamp: ISO 8601 format
+
+Follow the Agents.MD docstring template format.
+
+---
+
+## Error Handling
+
+- Use specific exception types
+- Log errors with context
+- Fail fast, recover gracefully
+- Never silently ignore exceptions
+- Create telemetry logs in `CodeAgents/{AgentName}/errors/`
+
+---
+
+## Testing
+
+- Write tests for new functionality
+- Use pytest conventions
+- Mock external dependencies
+- Maintain test isolation
+- Target 90%+ code coverage
+
+---
+
+## Telemetry
+
+- Create operation logs in `CodeAgents/{AgentName}/logs/`
+- Include operation type, status, duration, and context
+- Follow JSON schema defined in Agents.MD
+- Use ISO 8601 timestamps
+
+---
+
+## Code Quality
+
+- Use Ruff for linting and formatting
+- Run type checking with Pylance
+- Organize imports automatically
+- Format on save
+- Fix all auto-fixable issues
+
+---
+
+## Agent Protocol Compliance
+
+- Check `CodeAgents/Memory/{AgentName}.md` before starting tasks
+- Update memory file after completing tasks
+- Follow all Agents.MD protocol requirements
+- Create telemetry logs for all operations
+- Include operation tags in all code
+
+---
+
+**Agent:** Composer
+**Last Updated:** 2025-12-05T02:00:00Z
