@@ -39,12 +39,12 @@ async def test_tunnel():
 
     # Create a non-critical suggestion (Should be Filtered)
     minor_suggestion = Suggestion(
-        type=SuggestionType.REFACTORING,
-        severity=SeverityLevel.LOW,
+        type=SuggestionType.CRITICAL_REFACTOR,
+        severity=SeverityLevel.MEDIUM,
         file_path="src/utils.py",
         line_start=5,
         code_snippet="x = x + 1",
-        description="Use += operator"
+        description="Refactor to use += operator for better style"
     )
 
     print("\nIngesting suggestions...")
