@@ -1,0 +1,14 @@
+Test Report - 2025-12-05T04:00:23.759937
+======================================================================
+
+Total: 3, Passed: 0, Failed: 3
+
+
+Unit Tests (Nodes): FAIL
+Duration: 7.82s
+
+Integration Simulations (Mock): FAIL
+Duration: 0.08s
+
+Real Simulations: FAIL
+Duration: 8.37s
