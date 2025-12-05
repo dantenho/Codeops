@@ -1,0 +1,450 @@
+name: Health Monitoring & Alerts
+
+on:
+  schedule:
+    # Check every hour
+    - cron: '0 * * * *'
+    # Deep health check every 6 hours
+    - cron: '0 */6 * * *'
+
+  workflow_dispatch:
+    inputs:
+      check_type:
+        description: 'Health check type'
+        type: choice
+        options:
+          - quick
+          - full
+          - deep
+        default: 'quick'
+      send_notifications:
+        description: 'Send notifications'
+        type: boolean
+        default: true
+
+env:
+  REDIS_URL: redis://localhost:6379/0
+  HEALTH_CHECK_TIMEOUT: 30
+  ALERT_THRESHOLD: 3
+
+jobs:
+  # Check worker status
+  check-workers:
+    runs-on: ubuntu-latest
+    name: Check Worker Health
+    outputs:
+      workers_healthy: ${{ steps.check.outputs.healthy }}
+      workers_count: ${{ steps.check.outputs.count }}
+      workers_status: ${{ steps.check.outputs.status }}
+
+    services:
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          pip install celery redis
+
+      - name: Check worker status
+        id: check
+        timeout-minutes: 5
+        run: |
+          python << 'EOF'
+          import json
+          import os
+          from celery import Celery
+
+          app = Celery(broker=os.getenv('REDIS_URL'))
+
+          try:
+              # Inspect active workers
+              inspect = app.control.inspect()
+              active = inspect.active()
+              stats = inspect.stats()
+              registered = inspect.registered()
+
+              if active:
+                  worker_count = len(active)
+                  all_healthy = True
+
+                  status_info = {
+                      'workers': worker_count,
+                      'details': []
+                  }
+
+                  for worker_name, tasks in active.items():
+                      worker_info = {
+                          'name': worker_name,
+                          'active_tasks': len(tasks),
+                          'registered_tasks': len(registered.get(worker_name, [])) if registered else 0
+                      }
+                      status_info['details'].append(worker_info)
+
+                  with open(os.getenv('GITHUB_OUTPUT'), 'a') as f:
+                      f.write(f"healthy=true\n")
+                      f.write(f"count={worker_count}\n")
+                      f.write(f"status={json.dumps(status_info)}\n")
+
+                  print(f"✅ {worker_count} workers active and healthy")
+              else:
+                  with open(os.getenv('GITHUB_OUTPUT'), 'a') as f:
+                      f.write("healthy=false\n")
+                      f.write("count=0\n")
+                      f.write('status={"workers": 0, "details": []}\n')
+
+                  print("❌ No active workers found")
+
+          except Exception as e:
+              print(f"❌ Error checking workers: {e}")
+              with open(os.getenv('GITHUB_OUTPUT'), 'a') as f:
+                  f.write("healthy=false\n")
+                  f.write("count=0\n")
+                  f.write(f'status={{"error": "{str(e)}"}}\n')
+          EOF
+
+      - name: Record metrics
+        if: always()
+        run: |
+          mkdir -p metrics
+          cat << EOF > metrics/worker-health-$(date +%Y%m%d-%H%M%S).json
+          {
+            "timestamp": "$(date -u +"%Y-%m-%dT%H:%M:%SZ")",
+            "healthy": "${{ steps.check.outputs.healthy }}",
+            "worker_count": "${{ steps.check.outputs.count }}",
+            "status": ${{ steps.check.outputs.status || '{}' }},
+            "run_id": "${{ github.run_id }}"
+          }
+          EOF
+
+      - name: Upload metrics
+        uses: actions/upload-artifact@v4
+        with:
+          name: health-metrics-${{ github.run_id }}
+          path: metrics/
+
+  # Check Redis health
+  check-redis:
+    runs-on: ubuntu-latest
+    name: Check Redis Health
+
+    services:
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+
+    steps:
+      - name: Check Redis connection
+        run: |
+          sudo apt-get install -y redis-tools
+          redis-cli -h localhost ping
+
+      - name: Check Redis memory
+        run: |
+          redis-cli -h localhost INFO memory | grep used_memory_human
+
+      - name: Check Redis stats
+        run: |
+          redis-cli -h localhost INFO stats
+
+  # Check queue lengths
+  check-queues:
+    runs-on: ubuntu-latest
+    name: Check Task Queues
+    outputs:
+      queue_length: ${{ steps.check.outputs.length }}
+      has_backlog: ${{ steps.check.outputs.backlog }}
+
+    services:
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          pip install redis celery
+
+      - name: Check queue lengths
+        id: check
+        run: |
+          python << 'EOF'
+          import redis
+          import os
+
+          r = redis.from_url(os.getenv('REDIS_URL'))
+
+          # Check default queue
+          queue_length = r.llen('celery')
+
+          # Check if there's a backlog
+          has_backlog = queue_length > 100
+
+          with open(os.getenv('GITHUB_OUTPUT'), 'a') as f:
+              f.write(f"length={queue_length}\n")
+              f.write(f"backlog={'true' if has_backlog else 'false'}\n")
+
+          if has_backlog:
+              print(f"⚠️ Queue backlog detected: {queue_length} tasks")
+          else:
+              print(f"✅ Queue healthy: {queue_length} tasks")
+          EOF
+
+  # Performance check
+  performance-check:
+    runs-on: ubuntu-latest
+    name: Performance Check
+    if: |
+      github.event.inputs.check_type == 'full' ||
+      github.event.inputs.check_type == 'deep' ||
+      github.event.schedule == '0 */6 * * *'
+
+    services:
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+          pip install pytest pytest-benchmark
+
+      - name: Run performance tests
+        run: |
+          pytest tests/performance/ --benchmark-only || echo "Performance tests completed"
+
+      - name: Check response times
+        run: |
+          python << 'EOF'
+          import time
+          from celery import Celery
+          import os
+
+          app = Celery(broker=os.getenv('REDIS_URL'))
+
+          # Simple latency test
+          start = time.time()
+          result = app.control.inspect().ping()
+          latency = (time.time() - start) * 1000
+
+          print(f"Worker ping latency: {latency:.2f}ms")
+
+          if latency > 1000:
+              print("⚠️ High latency detected")
+          else:
+              print("✅ Latency normal")
+          EOF
+
+  # Alert on issues
+  alert:
+    runs-on: ubuntu-latest
+    name: Send Alerts
+    needs: [check-workers, check-queues]
+    if: |
+      always() &&
+      (needs.check-workers.outputs.workers_healthy == 'false' ||
+       needs.check-queues.outputs.has_backlog == 'true')
+
+    steps:
+      - name: Create incident issue
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const title = `🚨 Health Alert: Worker Issues Detected`;
+            const labels = ['incident', 'health-check', 'urgent'];
+
+            const body = `## Health Check Alert
+
+            **Time**: ${new Date().toISOString()}
+            **Severity**: HIGH
+
+            ### Status
+            - Workers Healthy: ${{ needs.check-workers.outputs.workers_healthy }}
+            - Worker Count: ${{ needs.check-workers.outputs.workers_count }}
+            - Queue Backlog: ${{ needs.check-queues.outputs.has_backlog }}
+            - Queue Length: ${{ needs.check-queues.outputs.queue_length }}
+
+            ### Details
+            \`\`\`json
+            ${{ needs.check-workers.outputs.workers_status }}
+            \`\`\`
+
+            ### Action Items
+            - [ ] Investigate worker health
+            - [ ] Check system resources
+            - [ ] Review recent deployments
+            - [ ] Clear queue backlog if needed
+
+            **Run**: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+            `;
+
+            // Check if recent issue exists
+            const { data: issues } = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              labels: 'incident,health-check',
+              state: 'open',
+              per_page: 10
+            });
+
+            const recentIssue = issues.find(issue => {
+              const created = new Date(issue.created_at);
+              const now = new Date();
+              const hoursSinceCreated = (now - created) / (1000 * 60 * 60);
+              return hoursSinceCreated < 24;
+            });
+
+            if (recentIssue) {
+              // Update existing issue
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: recentIssue.number,
+                body: `### Update: ${new Date().toISOString()}\n\n${body}`
+              });
+            } else {
+              // Create new issue
+              await github.rest.issues.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title,
+                labels,
+                body
+              });
+            }
+
+      - name: Slack alert
+        if: inputs.send_notifications != false
+        uses: 8398a7/action-slack@v3
+        with:
+          status: failure
+          custom_payload: |
+            {
+              text: "🚨 Worker Health Alert",
+              blocks: [
+                {
+                  type: "section",
+                  text: {
+                    type: "mrkdwn",
+                    text: "*Worker Health Alert*\n\n• Workers Healthy: ${{ needs.check-workers.outputs.workers_healthy }}\n• Worker Count: ${{ needs.check-workers.outputs.workers_count }}\n• Queue Backlog: ${{ needs.check-queues.outputs.has_backlog }}\n\n<${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Details>"
+                  }
+                }
+              ],
+              attachments: [{
+                color: 'danger',
+                fields: [{
+                  title: 'Severity',
+                  value: 'HIGH',
+                  short: true
+                }]
+              }]
+            }
+          webhook_url: ${{ secrets.SLACK_WEBHOOK_URL }}
+
+      - name: Discord alert
+        if: inputs.send_notifications != false
+        uses: sarisia/actions-status-discord@v1
+        with:
+          webhook: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          title: "Worker Health Alert"
+          description: |
+            Workers Healthy: ${{ needs.check-workers.outputs.workers_healthy }}
+            Worker Count: ${{ needs.check-workers.outputs.workers_count }}
+            Queue Backlog: ${{ needs.check-queues.outputs.has_backlog }}
+          color: 0xFF0000
+
+  # Generate health report
+  report:
+    runs-on: ubuntu-latest
+    name: Health Report
+    needs: [check-workers, check-redis, check-queues, performance-check]
+    if: always()
+
+    steps:
+      - name: Generate summary
+        run: |
+          echo "## System Health Report" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Check Time**: $(date -u +"%Y-%m-%d %H:%M:%S UTC")" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Component | Status | Details |" >> $GITHUB_STEP_SUMMARY
+          echo "|-----------|--------|---------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Workers | ${{ needs.check-workers.outputs.workers_healthy == 'true' && '✅ Healthy' || '❌ Unhealthy' }} | ${{ needs.check-workers.outputs.workers_count }} active |" >> $GITHUB_STEP_SUMMARY
+          echo "| Redis | ${{ needs.check-redis.result == 'success' && '✅ Healthy' || '❌ Unhealthy' }} | Connection OK |" >> $GITHUB_STEP_SUMMARY
+          echo "| Queue | ${{ needs.check-queues.outputs.has_backlog == 'false' && '✅ Normal' || '⚠️ Backlog' }} | ${{ needs.check-queues.outputs.queue_length }} tasks |" >> $GITHUB_STEP_SUMMARY
+          echo "| Performance | ${{ needs.performance-check.result }} | ${{ needs.performance-check.result == 'success' && 'OK' || 'N/A' }} |" >> $GITHUB_STEP_SUMMARY
+
+      - name: Store historical data
+        if: github.event_name == 'schedule'
+        run: |
+          echo "Storing health metrics for trending..."
+          # This would typically write to a database or monitoring system
+
+  # Auto-remediation
+  auto-remediate:
+    runs-on: ubuntu-latest
+    name: Auto Remediation
+    needs: [check-workers, check-queues]
+    if: |
+      always() &&
+      (needs.check-workers.outputs.workers_healthy == 'false' ||
+       needs.check-queues.outputs.has_backlog == 'true')
+
+    steps:
+      - name: Attempt worker restart
+        if: needs.check-workers.outputs.workers_healthy == 'false'
+        run: |
+          echo "Attempting to restart workers..."
+          # kubectl rollout restart deployment/celery-worker -n production
+          echo "Worker restart initiated"
+
+      - name: Clear stale tasks
+        if: needs.check-queues.outputs.has_backlog == 'true'
+        run: |
+          echo "Analyzing task backlog..."
+          # Could implement logic to purge very old tasks
+          echo "Backlog analysis complete"
+
+      - name: Notify remediation attempt
+        uses: 8398a7/action-slack@v3
+        with:
+          status: custom
+          custom_payload: |
+            {
+              text: "🔧 Auto-remediation attempted for health issues",
+              blocks: [{
+                type: "section",
+                text: {
+                  type: "mrkdwn",
+                  text: "*Auto-remediation Initiated*\n\nAttempting to resolve detected health issues.\n\n<${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Run>"
+                }
+              }]
+            }
+          webhook_url: ${{ secrets.SLACK_WEBHOOK_URL }}

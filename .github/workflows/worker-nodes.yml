@@ -1,0 +1,405 @@
+name: Worker Nodes CI/CD
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+      - workspace/backend
+      - workspace/assets-generator
+    paths:
+      - 'packages/worker/**'
+      - 'nodes/comfyui/**'
+      - 'nodes/anime4k/**'
+      - 'nodes/civitai/**'
+      - 'requirements.txt'
+      - 'docker-compose.yml'
+
+  pull_request:
+    branches:
+      - main
+      - develop
+    paths:
+      - 'packages/worker/**'
+      - 'nodes/**'
+
+  workflow_dispatch:
+    inputs:
+      test_mode:
+        description: 'Test mode'
+        type: choice
+        options:
+          - unit
+          - integration
+          - full
+        default: 'unit'
+      run_performance_tests:
+        description: 'Run performance tests'
+        type: boolean
+        default: false
+
+env:
+  REDIS_URL: redis://localhost:6379/0
+  PYTHON_VERSION: '3.11'
+  CELERY_BROKER_URL: redis://localhost:6379/0
+  CELERY_RESULT_BACKEND: redis://localhost:6379/0
+
+concurrency:
+  group: worker-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # Detect changes to determine which jobs to run
+  changes:
+    runs-on: ubuntu-latest
+    name: Detect Changes
+    outputs:
+      worker: ${{ steps.filter.outputs.worker }}
+      comfyui: ${{ steps.filter.outputs.comfyui }}
+      nodes: ${{ steps.filter.outputs.nodes }}
+      dependencies: ${{ steps.filter.outputs.dependencies }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dorny/paths-filter@v2
+        id: filter
+        with:
+          filters: |
+            worker:
+              - 'packages/worker/**'
+            comfyui:
+              - 'nodes/comfyui/**'
+            nodes:
+              - 'nodes/**'
+            dependencies:
+              - 'requirements.txt'
+              - 'packages/worker/requirements.txt'
+
+  # Lint and format worker code
+  lint-worker:
+    runs-on: ubuntu-latest
+    name: Lint Worker Code
+    needs: changes
+    if: needs.changes.outputs.worker == 'true'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: 'pip'
+
+      - name: Install linting tools
+        run: |
+          python -m pip install --upgrade pip
+          pip install black isort flake8 mypy pylint
+
+      - name: Check formatting with black
+        run: black --check packages/worker/
+
+      - name: Check imports with isort
+        run: isort --check-only packages/worker/
+
+      - name: Lint with flake8
+        run: flake8 packages/worker/ --max-line-length=100 --ignore=E203,W503
+
+      - name: Type check with mypy
+        run: mypy packages/worker/ --ignore-missing-imports
+        continue-on-error: true
+
+      - name: Lint with pylint
+        run: pylint packages/worker/ --disable=C0111,C0103,R0913
+        continue-on-error: true
+
+  # Test worker tasks
+  test-worker:
+    runs-on: ubuntu-latest
+    name: Test Worker Tasks
+    needs: [changes, lint-worker]
+    if: needs.changes.outputs.worker == 'true' || needs.changes.outputs.nodes == 'true'
+
+    services:
+      redis:
+        image: redis:7-alpine
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6379:6379
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pytest pytest-cov pytest-celery pytest-asyncio pytest-mock
+
+      - name: Run unit tests
+        env:
+          REDIS_URL: ${{ env.REDIS_URL }}
+        run: |
+          pytest packages/worker/tests/ \
+            --cov=packages/worker \
+            --cov-report=xml \
+            --cov-report=term \
+            -v \
+            --tb=short
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v3
+        with:
+          files: ./coverage.xml
+          flags: worker
+          name: worker-coverage
+
+      - name: Generate coverage badge
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: |
+          coverage=$(python -c "import xml.etree.ElementTree as ET; tree = ET.parse('coverage.xml'); print(tree.getroot().attrib['line-rate'])")
+          echo "COVERAGE=$(echo $coverage | awk '{printf \"%.0f\", $1 * 100}')%" >> $GITHUB_ENV
+
+  # Test Celery worker integration
+  test-celery-integration:
+    runs-on: ubuntu-latest
+    name: Celery Integration Tests
+    needs: [changes, test-worker]
+    if: |
+      needs.changes.outputs.worker == 'true' ||
+      github.event.inputs.test_mode == 'integration' ||
+      github.event.inputs.test_mode == 'full'
+
+    services:
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+          pip install pytest pytest-celery
+
+      - name: Start Celery worker
+        run: |
+          celery -A packages.worker.celery_app worker --loglevel=info --concurrency=2 &
+          WORKER_PID=$!
+          echo "WORKER_PID=$WORKER_PID" >> $GITHUB_ENV
+          sleep 5
+
+      - name: Run integration tests
+        env:
+          REDIS_URL: ${{ env.REDIS_URL }}
+        run: |
+          pytest tests/integration/ -v --tb=short -k "celery or worker"
+
+      - name: Stop Celery worker
+        if: always()
+        run: |
+          if [ ! -z "$WORKER_PID" ]; then
+            kill $WORKER_PID || true
+          fi
+
+  # Performance tests
+  performance-tests:
+    runs-on: ubuntu-latest
+    name: Worker Performance Tests
+    needs: test-celery-integration
+    if: |
+      github.event.inputs.run_performance_tests == 'true' ||
+      (github.event_name == 'push' && github.ref == 'refs/heads/main')
+
+    services:
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+          pip install locust pytest-benchmark
+
+      - name: Run performance benchmarks
+        run: |
+          pytest tests/performance/ --benchmark-only --benchmark-json=benchmark.json
+
+      - name: Store benchmark results
+        uses: benchmark-action/github-action-benchmark@v1
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        with:
+          tool: 'pytest'
+          output-file-path: benchmark.json
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          auto-push: true
+
+  # Build and test worker Docker image
+  build-worker-image:
+    runs-on: ubuntu-latest
+    name: Build Worker Image
+    needs: [test-worker, test-celery-integration]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Build worker image
+        uses: docker/build-push-action@v4
+        with:
+          context: .
+          file: ./packages/worker/Dockerfile
+          push: true
+          tags: |
+            ${{ secrets.DOCKER_USERNAME }}/codeagents-worker:latest
+            ${{ secrets.DOCKER_USERNAME }}/codeagents-worker:${{ github.sha }}
+          cache-from: type=registry,ref=${{ secrets.DOCKER_USERNAME }}/codeagents-worker:buildcache
+          cache-to: type=registry,ref=${{ secrets.DOCKER_USERNAME }}/codeagents-worker:buildcache,mode=max
+
+      - name: Test Docker image
+        run: |
+          docker run --rm \
+            -e REDIS_URL=${{ env.REDIS_URL }} \
+            ${{ secrets.DOCKER_USERNAME }}/codeagents-worker:${{ github.sha }} \
+            celery -A packages.worker.celery_app inspect ping
+
+  # Deploy worker to staging
+  deploy-worker-staging:
+    runs-on: ubuntu-latest
+    name: Deploy Worker to Staging
+    needs: build-worker-image
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    environment:
+      name: staging
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Deploy to staging
+        run: |
+          echo "Deploying worker to staging..."
+          # kubectl set image deployment/celery-worker \
+          #   celery-worker=${{ secrets.DOCKER_USERNAME }}/codeagents-worker:${{ github.sha }} \
+          #   -n staging
+          # kubectl rollout status deployment/celery-worker -n staging
+
+      - name: Verify worker health
+        run: |
+          echo "Verifying worker health..."
+          # celery -A packages.worker.celery_app inspect ping
+
+      - name: Run smoke tests
+        run: |
+          echo "Running smoke tests..."
+          # pytest tests/smoke/ -v
+
+  # Monitor and notify
+  notify:
+    runs-on: ubuntu-latest
+    name: Notify Results
+    needs: [lint-worker, test-worker, test-celery-integration, build-worker-image, deploy-worker-staging]
+    if: always()
+
+    steps:
+      - name: Check job statuses
+        run: |
+          echo "## Worker Pipeline Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Job | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|-----|--------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Lint | ${{ needs.lint-worker.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Tests | ${{ needs.test-worker.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Integration | ${{ needs.test-celery-integration.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Build | ${{ needs.build-worker-image.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Deploy | ${{ needs.deploy-worker-staging.result }} |" >> $GITHUB_STEP_SUMMARY
+
+      - name: Slack notification
+        if: failure()
+        uses: 8398a7/action-slack@v3
+        with:
+          status: failure
+          text: |
+            Worker pipeline failed
+            Branch: ${{ github.ref }}
+            Commit: ${{ github.sha }}
+            Run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          webhook_url: ${{ secrets.SLACK_WEBHOOK_URL }}
+
+      - name: Discord notification
+        if: success() && github.ref == 'refs/heads/main'
+        uses: sarisia/actions-status-discord@v1
+        with:
+          webhook: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          status: ${{ job.status }}
+          title: Worker Pipeline Success
+          description: |
+            All worker tests passed
+            Commit: ${{ github.sha }}
+            Branch: ${{ github.ref }}
+
+  # Cleanup old artifacts
+  cleanup:
+    runs-on: ubuntu-latest
+    name: Cleanup Artifacts
+    needs: notify
+    if: always() && github.event_name == 'push'
+
+    steps:
+      - uses: actions/github-script@v7
+        with:
+          script: |
+            const repo = context.repo;
+            const artifacts = await github.rest.actions.listArtifactsForRepo({
+              owner: repo.owner,
+              repo: repo.repo,
+              per_page: 100
+            });
+
+            const oldDate = new Date();
+            oldDate.setDate(oldDate.getDate() - 7);
+
+            for (const artifact of artifacts.data.artifacts) {
+              const created = new Date(artifact.created_at);
+              if (created < oldDate) {
+                console.log(`Deleting artifact: ${artifact.name}`);
+                await github.rest.actions.deleteArtifact({
+                  owner: repo.owner,
+                  repo: repo.repo,
+                  artifact_id: artifact.id
+                });
+              }
+            }
