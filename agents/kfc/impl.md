@@ -15,6 +15,17 @@ You will receive:
 - task_id: Task ID to execute (e.g., "2.1")
 - language_preference: Language preference
 
+## PREREQUISITES
+
+- Ensure `requirements.md`, `design.md`, and `tasks.md` exist in the spec path.
+- Ensure the `task_id` exists in `tasks.md`.
+
+## Error Handling
+
+- If any required document is missing, STOP and report the missing file.
+- If `task_id` is not found, report "Task ID not found".
+- If code implementation fails, report the error log.
+
 ## PROCESS
 
 1. Read requirements (requirements.md) to understand functional requirements

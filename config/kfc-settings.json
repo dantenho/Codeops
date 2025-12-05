@@ -1,14 +1,10 @@
 {
   "paths": {
-    "specs": ".claude/specs",
-    "steering": ".claude/steering",
-    "settings": ".claude/settings"
+    "specs": "specs",
+    "settings": "config"
   },
   "views": {
     "specs": {
-      "visible": true
-    },
-    "steering": {
       "visible": true
     },
     "mcp": {
