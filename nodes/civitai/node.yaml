@@ -1,0 +1,45 @@
+node:
+  name: "CivitAI"
+  id: "civitai"
+  version: "1.0.0"
+  description: "Asset model downloading and management from CivitAI"
+  created: "2025-12-05"
+  status: "protected"
+
+protected: true
+immutable: true
+archived: false
+
+protection:
+  level: "critical"
+  rule: "NO MODIFICATIONS ALLOWED"
+  enforced: true
+  git_hooks: true
+  admin_only: true
+
+changes:
+  allowed: false
+  requires_approval: "MAINTAINER_ONLY"
+  requires_review: "2_MAINTAINERS"
+  message: "This file is immutable. Contact maintainer for changes."
+
+workspace: "workspace/assets-generator"
+branch: "workspace/assets-generator"
+dependencies:
+  - shared/api-calls
+
+functions:
+  - model-discovery
+  - model-downloading
+  - model-caching
+  - lora-management
+
+specifications:
+  input: "model_id"
+  output: "model_file"
+  format: "safetensors, ckpt"
+  cache_location: "/models"
+
+maintainer: "Admin"
+last_modified: "2025-12-05T02:28:17Z"
+modification_locked: true

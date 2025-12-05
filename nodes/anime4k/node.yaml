@@ -1,0 +1,44 @@
+node:
+  name: "Anime4K"
+  id: "anime4k"
+  version: "1.0.0"
+  description: "Video upscaling using Anime4K algorithm"
+  created: "2025-12-05"
+  status: "protected"
+
+protected: true
+immutable: true
+archived: false
+
+protection:
+  level: "critical"
+  rule: "NO MODIFICATIONS ALLOWED"
+  enforced: true
+  git_hooks: true
+  admin_only: true
+
+changes:
+  allowed: false
+  requires_approval: "MAINTAINER_ONLY"
+  requires_review: "2_MAINTAINERS"
+  message: "This file is immutable. Contact maintainer for changes."
+
+workspace: "workspace/assets-generator"
+branch: "workspace/assets-generator"
+dependencies:
+  - shared/api-calls
+
+functions:
+  - video-upscaling
+  - anime-enhancement
+  - quality-improvement
+
+specifications:
+  input: "video"
+  output: "upscaled_video"
+  format: "MP4, MKV"
+  scaling: "2x, 4x, 8x"
+
+maintainer: "Admin"
+last_modified: "2025-12-05T02:28:17Z"
+modification_locked: true

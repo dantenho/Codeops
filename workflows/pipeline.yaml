@@ -1,0 +1,121 @@
+workflow:
+  name: "Asset Generation & Publishing Pipeline"
+  version: "1.0.0"
+  id: "main-pipeline"
+  created: "2025-12-05"
+  status: "protected"
+
+protected: true
+immutable: true
+archived: false
+
+protection:
+  level: "critical"
+  rule: "NO MODIFICATIONS ALLOWED"
+  enforced: true
+  git_hooks: true
+  admin_only: true
+
+changes:
+  allowed: false
+  requires_approval: "MAINTAINER_ONLY"
+  requires_review: "2_MAINTAINERS"
+  message: "This workflow is immutable. Contact maintainer for changes."
+
+description: "Complete pipeline from market research to NFT publication"
+
+stages:
+  - stage_1_research:
+      name: "Market Research"
+      nodes:
+        - social_media
+        - nft_trend
+      output: "market_trends"
+      branch: "workspace/agents"
+      
+  - stage_2_strategy:
+      name: "Strategy Development"
+      nodes:
+        - sales_strategy
+        - rag
+      input: "market_trends"
+      output: "strategy"
+      branch: "workspace/agents"
+      
+  - stage_3_asset_generation:
+      name: "Asset Generation"
+      nodes:
+        - civitai
+        - comfyui
+      input: "strategy"
+      output: "generated_assets"
+      branch: "workspace/assets-generator"
+      
+  - stage_4_upscaling:
+      name: "Quality Enhancement"
+      nodes:
+        - real_esrgan
+        - anime4k
+      input: "generated_assets"
+      output: "upscaled_assets"
+      branch: "workspace/assets-generator"
+      
+  - stage_5_evaluation:
+      name: "Human Evaluation"
+      nodes:
+        - gradio_eval
+      input: "upscaled_assets"
+      output: "rated_assets"
+      branch: "workspace/frontend-streamlit"
+      
+  - stage_6_database:
+      name: "Database Integration"
+      nodes:
+        - chromadb
+      input: "rated_assets"
+      output: "indexed_assets"
+      branch: "shared/chromadb"
+      
+  - stage_7_publication:
+      name: "Blockchain Publishing"
+      nodes:
+        - gas_tracker
+        - nft_mint
+      input: "indexed_assets"
+      output: "transaction_hash"
+      branch: "workspace/backend"
+
+data_flow:
+  source: "social_media + market_trends"
+  processing: "7_stages"
+  destination: "blockchain"
+  realtime: true
+  database: "chromadb"
+
+branches:
+  - workspace/agents
+  - workspace/assets-generator
+  - workspace/frontend-streamlit
+  - workspace/backend
+  - shared/chromadb
+  - shared/api-calls
+
+sync_rules:
+  chromadb_updates:
+    trigger: "asset_generation"
+    frequency: "real-time"
+    targets:
+      - workspace/assets-generator
+      - workspace/frontend-streamlit
+
+execution:
+  mode: "sequential"
+  error_handling: "halt_and_alert"
+  timeout: "24h"
+  retry_policy: "exponential_backoff"
+
+maintainer: "Admin"
+last_modified: "2025-12-05T02:28:17Z"
+modification_locked: true
+
+warning: "⚠️ This workflow definition is immutable and protected. Any changes require maintainer approval and must follow strict review procedures."

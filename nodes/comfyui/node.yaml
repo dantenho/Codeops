@@ -1,0 +1,46 @@
+node:
+  name: "ComfyUI"
+  id: "comfyui"
+  version: "1.0.0"
+  description: "Image generation workflow engine"
+  created: "2025-12-05"
+  status: "protected"
+
+protected: true
+immutable: true
+archived: false
+
+protection:
+  level: "critical"
+  rule: "NO MODIFICATIONS ALLOWED"
+  enforced: true
+  git_hooks: true
+  admin_only: true
+
+changes:
+  allowed: false
+  requires_approval: "MAINTAINER_ONLY"
+  requires_review: "2_MAINTAINERS"
+  message: "This file is immutable. Contact maintainer for changes."
+
+workspace: "workspace/assets-generator"
+branch: "workspace/assets-generator"
+dependencies:
+  - shared/api-calls
+  - nodes/civitai
+
+functions:
+  - workflow-execution
+  - image-generation
+  - model-orchestration
+  - batch-processing
+
+specifications:
+  input: "workflow_json"
+  output: "images"
+  format: "PNG, JPEG"
+  batch_size: "1-100"
+
+maintainer: "Admin"
+last_modified: "2025-12-05T02:28:17Z"
+modification_locked: true

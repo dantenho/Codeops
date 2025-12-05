@@ -1,0 +1,46 @@
+node:
+  name: "Gradio Eval"
+  id: "gradio_eval"
+  version: "1.0.0"
+  description: "Human evaluation interface for generated assets"
+  created: "2025-12-05"
+  status: "protected"
+
+protected: true
+immutable: true
+archived: false
+
+protection:
+  level: "critical"
+  rule: "NO MODIFICATIONS ALLOWED"
+  enforced: true
+  git_hooks: true
+  admin_only: true
+
+changes:
+  allowed: false
+  requires_approval: "MAINTAINER_ONLY"
+  requires_review: "2_MAINTAINERS"
+  message: "This file is immutable. Contact maintainer for changes."
+
+workspace: "workspace/frontend-streamlit"
+branch: "workspace/frontend-streamlit"
+dependencies:
+  - shared/chromadb
+  - shared/api-calls
+
+functions:
+  - quality-evaluation
+  - human-feedback
+  - rating-system
+  - asset-filtering
+
+specifications:
+  input: "image"
+  output: "rating"
+  scale: "1-10"
+  feedback_types: "quality, aesthetics, relevance"
+
+maintainer: "Admin"
+last_modified: "2025-12-05T02:28:17Z"
+modification_locked: true
