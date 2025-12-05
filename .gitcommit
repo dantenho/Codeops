@@ -1,0 +1,79 @@
+# Commit Convention
+
+## Format
+<type>(<scope>): <subject>
+
+<body>
+
+## Types
+- feat: New feature
+- fix: Bug fix
+- refactor: Code refactor
+- docs: Documentation
+- test: Tests
+- chore: Build, deps, config
+
+## Scopes (Workspaces)
+- agents: Agents workspace
+- backend: Backend workspace
+- frontend: Frontend workspace
+
+## Example
+feat(agents): add memory vector store integration
+
+Integrated OpenAI embeddings with the memory module.
+Updated vector_store.py with new indexing logic.
+
+Closes #123
+
+## Branches
+
+### Workspace Branches (Independent)
+- workspace/agents: Agents development
+- workspace/backend: Backend development
+- workspace/frontend: Frontend development
+
+### Shared Branches (Interlinked)
+- shared/database: Database schema & migrations (syncs → agents, backend)
+- shared/api-calls: API contracts & endpoints (syncs → all workspaces)
+
+### Integration
+- main: Production (merges all branches)
+
+## Branch Dependency Graph
+```
+        main
+       /  |  \
+      /   |   \
+   agents backend frontend
+      \   |   /
+       shared/
+      /    \
+  database  api-calls
+```
+
+## Workflow
+
+### Workspace Feature
+1. git checkout workspace/agents
+2. git checkout -b feature/my-feature
+3. git commit -m "feat(agents): add new memory function"
+4. git push origin feature/my-feature
+5. git checkout workspace/agents && git merge feature/my-feature
+
+### Shared Changes (Database/API)
+1. git checkout shared/database
+2. git checkout -b feature/new-schema
+3. git commit -m "feat(database): add users table"
+4. git push origin feature/new-schema
+5. git checkout shared/database && git merge feature/new-schema
+6. Sync to dependent branches:
+   git checkout workspace/agents && git merge shared/database
+   git checkout workspace/backend && git merge shared/database
+
+### Release to Main
+1. git checkout main
+2. git merge workspace/agents
+3. git merge workspace/backend
+4. git merge workspace/frontend
+5. git push origin main
