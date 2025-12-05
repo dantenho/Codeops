@@ -1,0 +1,86 @@
+version: "1.0"
+project: "CodeAgents"
+
+workspaces:
+  agents:
+    name: "Agents Workspace"
+    branch: "workspace/agents"
+    description: "Agent development and orchestration"
+    dependencies:
+      - shared/database
+      - shared/api-calls
+    directories:
+      - agents/
+      - nodes/
+    functions:
+      - agent-orchestration
+      - memory-integration
+      - vector-store
+
+  backend:
+    name: "Backend Workspace"
+    branch: "workspace/backend"
+    description: "Backend API and services"
+    dependencies:
+      - shared/database
+      - shared/api-calls
+    directories:
+      - backend/
+      - packages/
+    functions:
+      - api-endpoints
+      - data-processing
+      - service-integration
+
+  frontend:
+    name: "Frontend Workspace"
+    branch: "workspace/frontend"
+    description: "Frontend UI and components"
+    dependencies:
+      - shared/api-calls
+    directories:
+      - frontend/
+      - frontend_prototype/
+    functions:
+      - ui-components
+      - state-management
+      - api-integration
+
+shared:
+  database:
+    name: "Database"
+    branch: "shared/database"
+    description: "Database schema, migrations, models"
+    syncs_to:
+      - workspace/agents
+      - workspace/backend
+    directories:
+      - database/
+    functions:
+      - schema-management
+      - migrations
+      - data-models
+
+  api_calls:
+    name: "API Calls"
+    branch: "shared/api-calls"
+    description: "API contracts, endpoints, middleware"
+    syncs_to:
+      - workspace/agents
+      - workspace/backend
+      - workspace/frontend
+    directories:
+      - hub/
+    functions:
+      - endpoint-definitions
+      - authentication
+      - request-validation
+
+main:
+  name: "Production"
+  branch: "main"
+  merges_from:
+    - workspace/agents
+    - workspace/backend
+    - workspace/frontend
+  description: "Production-ready code"
