@@ -1,0 +1,14 @@
+Starting Suggestion Tunnel Test...
+Initializing tunnel...
+Tunnel initialized.
+Setting up with Claude...
+Setup complete.
+Creating channels...
+Channels created.
+Tunnel Initialized. Channel ID: 5319ab0a-c109-45da-a472-70f7250e2608
+Runtime Error: type object 'SeverityLevel' has no attribute 'LOW'
+Traceback (most recent call last):
+  File "C:\Users\Dante\Desktop\EudoraX\Prorotype\X.worktrees\CodeAgents\debug_tunnel.py", line 54, in test_tunnel
+    severity=SeverityLevel.LOW,
+             ^^^^^^^^^^^^^^^^^
+AttributeError: type object 'SeverityLevel' has no attribute 'LOW'

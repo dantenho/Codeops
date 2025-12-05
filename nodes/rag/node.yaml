@@ -1,0 +1,46 @@
+node:
+  name: "RAG"
+  id: "rag"
+  version: "1.0.0"
+  description: "Retrieval-Augmented Generation for strategy synthesis"
+  created: "2025-12-05"
+  status: "protected"
+
+protected: true
+immutable: true
+archived: false
+
+protection:
+  level: "critical"
+  rule: "NO MODIFICATIONS ALLOWED"
+  enforced: true
+  git_hooks: true
+  admin_only: true
+
+changes:
+  allowed: false
+  requires_approval: "MAINTAINER_ONLY"
+  requires_review: "2_MAINTAINERS"
+  message: "This file is immutable. Contact maintainer for changes."
+
+workspace: "workspace/agents"
+branch: "workspace/agents"
+dependencies:
+  - shared/chromadb
+  - shared/api-calls
+
+functions:
+  - vector-retrieval
+  - context-synthesis
+  - strategy-generation
+  - prompt-engineering
+
+specifications:
+  input: "query"
+  output: "strategy"
+  database: "chromadb"
+  embedding_model: "sentence-transformers"
+
+maintainer: "Admin"
+last_modified: "2025-12-05T02:28:17Z"
+modification_locked: true
