@@ -1,5 +1,0 @@
-codeops-core
-langgraph
-langchain
-pydantic
-python-dotenv

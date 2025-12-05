@@ -1,9 +1,0 @@
-tasks:
-  research_task:
-    description: Conduct a comprehensive analysis of {topic}.
-    expected_output: A detailed report on {topic}.
-    agent: researcher
-  writing_task:
-    description: Write a blog post about {topic} based on the research.
-    expected_output: A 4-paragraph blog post.
-    agent: writer

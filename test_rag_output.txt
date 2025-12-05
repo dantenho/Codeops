@@ -1,9 +1,0 @@
-C:\Users\Dante\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.12_qbz5n2kfra8p0\LocalCache\local-packages\Python312\site-packages\transformers\utils\hub.py:110: FutureWarning: Using `TRANSFORMERS_CACHE` is deprecated and will be removed in v5 of Transformers. Use `HF_HOME` instead.
-  warnings.warn(
-Testing ChromaDB Backend...
-Chroma Results: {'ids': [['doc2', 'doc1']], 'embeddings': None, 'documents': [['ChromaDB is a vector database.', 'This is a test document about RAG.']], 'uris': None, 'included': ['metadatas', 'documents', 'distances'], 'data': None, 'metadatas': [[{'source': 'test'}, {'source': 'test'}]], 'distances': [[0.6735997796058655, 1.942096471786499]]}
-PASS: ChromaDB retrieval successful.
-
-Testing FAISS Backend...
-FAISS Results: {'ids': [['f2', 'f1']], 'documents': [['In-memory vector search.', 'FAISS is fast.']], 'metadatas': [[{'tag': 'memory'}, {'tag': 'fast'}]], 'distances': [[0.8691556453704834, 1.328802466392517]]}
-PASS: FAISS retrieval successful.
