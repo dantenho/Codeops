@@ -1,0 +1,181 @@
+name: Workspace Sync & Validation
+
+on:
+  push:
+    branches:
+      - workspace/*
+      - shared/*
+  pull_request:
+    branches:
+      - workspace/*
+      - shared/*
+  workflow_dispatch:
+
+jobs:
+  validate-workspace:
+    runs-on: ubuntu-latest
+    name: Validate Workspace
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      - name: Identify workspace
+        id: identify
+        run: |
+          BRANCH=${{ github.ref }}
+          if [[ $BRANCH == *"workspace/agents"* ]]; then
+            echo "workspace=agents" >> $GITHUB_OUTPUT
+          elif [[ $BRANCH == *"workspace/assets-generator"* ]]; then
+            echo "workspace=assets-generator" >> $GITHUB_OUTPUT
+          elif [[ $BRANCH == *"workspace/frontend-streamlit"* ]]; then
+            echo "workspace=frontend-streamlit" >> $GITHUB_OUTPUT
+          elif [[ $BRANCH == *"workspace/backend"* ]]; then
+            echo "workspace=backend" >> $GITHUB_OUTPUT
+          elif [[ $BRANCH == *"shared/chromadb"* ]]; then
+            echo "workspace=shared-chromadb" >> $GITHUB_OUTPUT
+          fi
+      
+      - name: Check dependencies
+        run: |
+          echo "Checking dependencies for ${{ steps.identify.outputs.workspace }}"
+          # Validate that all dependencies are up-to-date
+          grep -r "workspace:" workspace.yaml
+      
+      - name: Test workspace changes
+        run: |
+          python -m pip install pytest
+          pytest tests/ -v
+      
+      - name: Notify maintainers
+        if: success()
+        uses: actions/github-script@v6
+        with:
+          script: |
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: '✅ Workspace validation passed. Ready for merge.'
+            })
+
+  sync-shared-branches:
+    runs-on: ubuntu-latest
+    name: Sync Shared Branches
+    needs: validate-workspace
+    if: github.event_name == 'push' && (contains(github.ref, 'shared/chromadb') || contains(github.ref, 'shared/api-calls') || contains(github.ref, 'shared/database'))
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      - name: Configure git
+        run: |
+          git config user.name "GitHub Actions"
+          git config user.email "actions@github.com"
+      
+      - name: Sync to dependent workspaces
+        run: |
+          # Determine which shared branch and dependent workspaces
+          BRANCH=${{ github.ref }}
+          
+          if [[ $BRANCH == *"shared/chromadb"* ]]; then
+            echo "Syncing shared/chromadb to dependent workspaces..."
+            git fetch origin
+            
+            # Merge to agents workspace
+            git checkout workspace/agents
+            git merge origin/shared/chromadb -m "chore: sync chromadb to agents workspace"
+            git push origin workspace/agents
+            
+            # Merge to assets-generator workspace
+            git checkout workspace/assets-generator
+            git merge origin/shared/chromadb -m "chore: sync chromadb to assets-generator workspace"
+            git push origin workspace/assets-generator
+            
+            # Merge to frontend-streamlit workspace
+            git checkout workspace/frontend-streamlit
+            git merge origin/shared/chromadb -m "chore: sync chromadb to frontend-streamlit workspace"
+            git push origin workspace/frontend-streamlit
+            
+            # Merge to backend workspace
+            git checkout workspace/backend
+            git merge origin/shared/chromadb -m "chore: sync chromadb to backend workspace"
+            git push origin workspace/backend
+          fi
+      
+      - name: Notify sync completion
+        if: always()
+        uses: 8398a7/action-slack@v3
+        with:
+          status: ${{ job.status }}
+          text: 'Shared branch sync completed: ${{ job.status }}'
+          webhook_url: ${{ secrets.SLACK_WEBHOOK_URL }}
+
+  validate-yaml:
+    runs-on: ubuntu-latest
+    name: Validate YAML Files
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Validate node YAML
+        run: |
+          python -c "
+          import yaml
+          import glob
+          
+          errors = []
+          for yaml_file in glob.glob('nodes/*/node.yaml'):
+              try:
+                  with open(yaml_file) as f:
+                      data = yaml.safe_load(f)
+                      if not data.get('protected'):
+                          errors.append(f'{yaml_file}: missing protected flag')
+                      if not data.get('immutable'):
+                          errors.append(f'{yaml_file}: missing immutable flag')
+              except Exception as e:
+                  errors.append(f'{yaml_file}: {e}')
+          
+          if errors:
+              for error in errors:
+                  print(f'❌ {error}')
+              exit(1)
+          else:
+              print('✅ All node YAML files are valid')
+          "
+      
+      - name: Validate workflow YAML
+        run: |
+          python -c "
+          import yaml
+          
+          try:
+              with open('workflows/pipeline.yaml') as f:
+                  data = yaml.safe_load(f)
+                  if not data.get('protected'):
+                      print('❌ Workflow YAML missing protected flag')
+                      exit(1)
+                  print('✅ Workflow YAML is valid')
+          except Exception as e:
+              print(f'❌ Error: {e}')
+              exit(1)
+          "
+
+  status-check:
+    runs-on: ubuntu-latest
+    name: Status Check Summary
+    needs: [validate-workspace, sync-shared-branches, validate-yaml]
+    if: always()
+    steps:
+      - name: Workspace validation
+        run: echo "✅ Workspace validation: ${{ needs.validate-workspace.result }}"
+      
+      - name: Sync status
+        run: echo "✅ Sync status: ${{ needs.sync-shared-branches.result }}"
+      
+      - name: YAML validation
+        run: echo "✅ YAML validation: ${{ needs.validate-yaml.result }}"
+      
+      - name: Report status
+        if: failure()
+        run: exit 1

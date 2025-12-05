@@ -1,0 +1,277 @@
+name: Release & Deployment
+
+on:
+  push:
+    tags:
+      - 'v*'
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Release version (e.g., v1.0.0)'
+        required: true
+
+env:
+  REGISTRY: docker.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  build-release:
+    runs-on: ubuntu-latest
+    name: Build Release Assets
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Determine version
+        id: version
+        run: |
+          if [[ $GITHUB_REF == refs/tags/* ]]; then
+            VERSION=${GITHUB_REF#refs/tags/}
+          else
+            VERSION=${{ github.event.inputs.version }}
+          fi
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+      
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+      
+      - name: Build distribution packages
+        run: |
+          pip install build
+          python -m build
+      
+      - name: Create release notes
+        id: release_notes
+        run: |
+          VERSION=${{ steps.version.outputs.version }}
+          echo "## Release $VERSION" > RELEASE_NOTES.md
+          echo "" >> RELEASE_NOTES.md
+          echo "### Features" >> RELEASE_NOTES.md
+          git log $(git describe --tags --abbrev=0)..HEAD --oneline | grep "feat:" >> RELEASE_NOTES.md || true
+          echo "" >> RELEASE_NOTES.md
+          echo "### Fixes" >> RELEASE_NOTES.md
+          git log $(git describe --tags --abbrev=0)..HEAD --oneline | grep "fix:" >> RELEASE_NOTES.md || true
+      
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: distribution
+          path: dist/
+
+  publish-docker:
+    runs-on: ubuntu-latest
+    name: Publish Docker Image
+    needs: build-release
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Determine version
+        id: version
+        run: |
+          if [[ $GITHUB_REF == refs/tags/* ]]; then
+            VERSION=${GITHUB_REF#refs/tags/}
+          else
+            VERSION=${{ github.event.inputs.version }}
+          fi
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+      
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+      
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+      
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v4
+        with:
+          context: .
+          push: true
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.version.outputs.version }}
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+          cache-from: type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:buildcache
+          cache-to: type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:buildcache,mode=max
+      
+      - name: Notify Docker push
+        uses: 8398a7/action-slack@v3
+        with:
+          status: ${{ job.status }}
+          text: |
+            Docker image published
+            Version: ${{ steps.version.outputs.version }}
+            Image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          webhook_url: ${{ secrets.SLACK_WEBHOOK_URL }}
+
+  deploy-production:
+    runs-on: ubuntu-latest
+    name: Deploy to Production
+    needs: publish-docker
+    environment:
+      name: production
+      url: https://codeagents.example.com
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Determine version
+        id: version
+        run: |
+          if [[ $GITHUB_REF == refs/tags/* ]]; then
+            VERSION=${GITHUB_REF#refs/tags/}
+          else
+            VERSION=${{ github.event.inputs.version }}
+          fi
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+      
+      - name: Deploy to production cluster
+        run: |
+          echo "Deploying version ${{ steps.version.outputs.version }} to production..."
+          # kubectl set image deployment/codeagents codeagents=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.version.outputs.version }} -n production
+          # kubectl rollout status deployment/codeagents -n production
+      
+      - name: Verify deployment
+        run: |
+          echo "Verifying production deployment..."
+          # curl -f https://codeagents.example.com/health || exit 1
+      
+      - name: Notify production deployment
+        uses: 8398a7/action-slack@v3
+        with:
+          status: ${{ job.status }}
+          text: |
+            Production deployment completed
+            Version: ${{ steps.version.outputs.version }}
+            Status: ${{ job.status }}
+          webhook_url: ${{ secrets.SLACK_WEBHOOK_URL }}
+
+  publish-release:
+    runs-on: ubuntu-latest
+    name: Publish GitHub Release
+    needs: [build-release, publish-docker, deploy-production]
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Determine version
+        id: version
+        run: |
+          if [[ $GITHUB_REF == refs/tags/* ]]; then
+            VERSION=${GITHUB_REF#refs/tags/}
+          else
+            VERSION=${{ github.event.inputs.version }}
+          fi
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+      
+      - name: Download artifacts
+        uses: actions/download-artifact@v3
+        with:
+          name: distribution
+          path: dist/
+      
+      - name: Create release
+        if: github.event_name != 'release'
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ steps.version.outputs.version }}
+          files: dist/*
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Publish release
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const release = await github.rest.repos.getRelease({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              release_id: context.payload.release.id
+            })
+            github.rest.repos.updateRelease({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              release_id: context.payload.release.id,
+              draft: false
+            })
+      
+      - name: Notify release published
+        uses: 8398a7/action-slack@v3
+        with:
+          status: ${{ job.status }}
+          text: |
+            Release published: ${{ steps.version.outputs.version }}
+            URL: https://github.com/${{ github.repository }}/releases/tag/${{ steps.version.outputs.version }}
+          webhook_url: ${{ secrets.SLACK_WEBHOOK_URL }}
+      
+      - name: Post to Discord
+        uses: sarisia/actions-status-discord@v1
+        with:
+          webhook_url: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          status: ${{ job.status }}
+          title: Release Published
+          description: |
+            Version: ${{ steps.version.outputs.version }}
+            Repository: ${{ github.repository }}
+
+  update-docs:
+    runs-on: ubuntu-latest
+    name: Update Documentation
+    needs: publish-release
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Update changelog
+        run: |
+          if [[ $GITHUB_REF == refs/tags/* ]]; then
+            VERSION=${GITHUB_REF#refs/tags/}
+            # Add version to CHANGELOG.md
+            echo "## $VERSION" > /tmp/changelog
+            git log $(git describe --tags --abbrev=0)..HEAD --oneline >> /tmp/changelog || true
+            cat CHANGELOG.md >> /tmp/changelog
+            mv /tmp/changelog CHANGELOG.md
+          fi
+      
+      - name: Commit and push updates
+        if: success()
+        run: |
+          git config user.name "Release Bot"
+          git config user.email "release@github.com"
+          git add CHANGELOG.md
+          git commit -m "chore: update changelog for release" || true
+          git push origin main || true
+
+  final-notification:
+    runs-on: ubuntu-latest
+    name: Final Release Notification
+    needs: [build-release, publish-docker, deploy-production, publish-release, update-docs]
+    if: always()
+    steps:
+      - name: Determine version
+        id: version
+        run: |
+          if [[ $GITHUB_REF == refs/tags/* ]]; then
+            VERSION=${GITHUB_REF#refs/tags/}
+          else
+            VERSION=${{ github.event.inputs.version }}
+          fi
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+      
+      - name: Send final release notification
+        uses: 8398a7/action-slack@v3
+        with:
+          status: ${{ job.status }}
+          text: |
+            🚀 Release Pipeline Complete
+            Version: ${{ steps.version.outputs.version }}
+            Build: ${{ needs.build-release.result }}
+            Docker: ${{ needs.publish-docker.result }}
+            Deployment: ${{ needs.deploy-production.result }}
+            Release: ${{ needs.publish-release.result }}
+            Docs: ${{ needs.update-docs.result }}
+          webhook_url: ${{ secrets.SLACK_WEBHOOK_URL }}
+          fields: repo,message,commit,author,action

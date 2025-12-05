@@ -1,0 +1,316 @@
+name: Main CI/CD Pipeline
+
+on:
+  push:
+    branches:
+      - main
+      - workspace/*
+      - shared/*
+  pull_request:
+    branches:
+      - main
+      - workspace/*
+  schedule:
+    - cron: '0 2 * * *'  # Daily 2 AM
+  workflow_dispatch:
+
+env:
+  REGISTRY: docker.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  # Stage 1: Code Quality
+  lint-and-format:
+    runs-on: ubuntu-latest
+    name: Lint & Format Check
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+      
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install flake8 black isort
+      
+      - name: Check code format
+        run: |
+          black --check .
+          isort --check-only .
+          flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+      
+      - name: Notify on failure
+        if: failure()
+        uses: 8398a7/action-slack@v3
+        with:
+          status: ${{ job.status }}
+          text: 'Linting failed on ${{ github.ref }}'
+          webhook_url: ${{ secrets.SLACK_WEBHOOK_URL }}
+
+  # Stage 2: Unit Tests
+  unit-tests:
+    runs-on: ubuntu-latest
+    name: Unit Tests
+    needs: lint-and-format
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+      
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt pytest pytest-cov
+      
+      - name: Run tests
+        run: pytest tests/ --cov --cov-report=xml
+      
+      - name: Upload coverage
+        uses: codecov/codecov-action@v3
+        with:
+          files: ./coverage.xml
+      
+      - name: Notify on failure
+        if: failure()
+        uses: 8398a7/action-slack@v3
+        with:
+          status: ${{ job.status }}
+          text: 'Unit tests failed on ${{ github.ref }}'
+          webhook_url: ${{ secrets.SLACK_WEBHOOK_URL }}
+
+  # Stage 3: Protect Files Check
+  protect-files:
+    runs-on: ubuntu-latest
+    name: Protected Files Check
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      - name: Check protected files
+        run: |
+          PROTECTED_FILES=(
+            "workflows/pipeline.yaml"
+            "nodes/anime4k/node.yaml"
+            "nodes/civitai/node.yaml"
+            "nodes/comfyui/node.yaml"
+            "nodes/gradio_eval/node.yaml"
+            "nodes/nft_mint/node.yaml"
+            "nodes/rag/node.yaml"
+            "nodes/gas_tracker/node.yaml"
+            "nodes/social_media/node.yaml"
+            "nodes/sales_strategy/node.yaml"
+            "nodes/gemini_analysis/node.yaml"
+          )
+          
+          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            CHANGED_FILES=$(git diff --name-only origin/main HEAD)
+          else
+            CHANGED_FILES=$(git diff --name-only HEAD~1 HEAD)
+          fi
+          
+          VIOLATION=0
+          for file in $CHANGED_FILES; do
+            for protected in "${PROTECTED_FILES[@]}"; do
+              if [[ "$file" == "$protected" ]]; then
+                echo "❌ ERROR: Cannot modify protected file: $file"
+                VIOLATION=1
+              fi
+            done
+          done
+          
+          if [ $VIOLATION -eq 1 ]; then
+            exit 1
+          fi
+      
+      - name: Notify on protection violation
+        if: failure()
+        uses: actions/github-script@v6
+        with:
+          script: |
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: '❌ **Protected Files Violation**\n\nYou cannot modify protected node/workflow YAML files. These are immutable and can only be changed by maintainers.\n\nSee PROTECTION.md for change request process.'
+            })
+
+  # Stage 4: Build Docker Image
+  build-image:
+    runs-on: ubuntu-latest
+    name: Build Docker Image
+    needs: [lint-and-format, unit-tests, protect-files]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+      
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+      
+      - name: Build and push
+        uses: docker/build-push-action@v4
+        with:
+          context: .
+          push: true
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
+          cache-from: type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:buildcache
+          cache-to: type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:buildcache,mode=max
+      
+      - name: Notify on success
+        uses: 8398a7/action-slack@v3
+        with:
+          status: ${{ job.status }}
+          text: 'Docker image built and pushed: ${{ github.sha }}'
+          webhook_url: ${{ secrets.SLACK_WEBHOOK_URL }}
+
+  # Stage 5: Security Scan
+  security-scan:
+    runs-on: ubuntu-latest
+    name: Security Scan
+    needs: [lint-and-format, unit-tests]
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'fs'
+          scan-ref: '.'
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+      
+      - name: Upload Trivy results to GitHub Security
+        uses: github/codeql-action/upload-sarif@v2
+        with:
+          sarif_file: 'trivy-results.sarif'
+      
+      - name: Check for vulnerabilities
+        run: |
+          if grep -q '"HIGH"' trivy-results.sarif; then
+            echo "High severity vulnerabilities found!"
+            exit 1
+          fi
+
+  # Stage 6: Deploy to Staging
+  deploy-staging:
+    runs-on: ubuntu-latest
+    name: Deploy to Staging
+    needs: [build-image, security-scan]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Deploy to staging environment
+        run: |
+          echo "Deploying to staging..."
+          # kubectl rollout restart deployment/codeagents -n staging
+          # or use your deployment method
+      
+      - name: Notify deployment
+        uses: 8398a7/action-slack@v3
+        with:
+          status: ${{ job.status }}
+          text: 'Staging deployment: ${{ job.status }}'
+          webhook_url: ${{ secrets.SLACK_WEBHOOK_URL }}
+
+  # Stage 7: Integration Tests
+  integration-tests:
+    runs-on: ubuntu-latest
+    name: Integration Tests
+    needs: deploy-staging
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+      
+      - name: Run integration tests
+        run: |
+          pip install -r requirements.txt pytest
+          pytest tests/integration/ -v
+
+  # Stage 8: Deploy to Production
+  deploy-production:
+    runs-on: ubuntu-latest
+    name: Deploy to Production
+    needs: integration-tests
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    environment:
+      name: production
+      url: https://codeagents.example.com
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Deploy to production
+        run: |
+          echo "Deploying to production..."
+          # kubectl rollout restart deployment/codeagents -n production
+      
+      - name: Notify production deployment
+        uses: 8398a7/action-slack@v3
+        with:
+          status: ${{ job.status }}
+          text: 'Production deployment: ${{ job.status }}\nCommit: ${{ github.sha }}'
+          webhook_url: ${{ secrets.SLACK_WEBHOOK_URL }}
+      
+      - name: Post to Discord
+        if: always()
+        uses: sarisia/actions-status-discord@v1
+        with:
+          webhook_url: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          status: ${{ job.status }}
+          description: |
+            Production deployed
+            Commit: ${{ github.sha }}
+            Branch: ${{ github.ref }}
+
+  # Stage 9: Summary & Notifications
+  summary:
+    runs-on: ubuntu-latest
+    name: Pipeline Summary
+    needs: [lint-and-format, unit-tests, protect-files, build-image, security-scan, deploy-staging, integration-tests, deploy-production]
+    if: always()
+    steps:
+      - name: Check job statuses
+        run: |
+          echo "Pipeline Status Summary:"
+          echo "- Lint: ${{ needs.lint-and-format.result }}"
+          echo "- Tests: ${{ needs.unit-tests.result }}"
+          echo "- Protection: ${{ needs.protect-files.result }}"
+          echo "- Build: ${{ needs.build-image.result }}"
+          echo "- Security: ${{ needs.security-scan.result }}"
+          echo "- Staging: ${{ needs.deploy-staging.result }}"
+          echo "- Integration: ${{ needs.integration-tests.result }}"
+          echo "- Production: ${{ needs.deploy-production.result }}"
+      
+      - name: Send final notification
+        if: always()
+        uses: 8398a7/action-slack@v3
+        with:
+          status: ${{ job.status }}
+          text: |
+            Pipeline Complete: ${{ job.status }}
+            Branch: ${{ github.ref }}
+            Commit: ${{ github.sha }}
+            Event: ${{ github.event_name }}
+          webhook_url: ${{ secrets.SLACK_WEBHOOK_URL }}
+          fields: repo,message,commit,author,action,eventName,ref,workflow
