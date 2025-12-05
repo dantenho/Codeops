@@ -675,7 +675,19 @@ class Tunnel:
             if heartbeat.exists():
                 try:
                     last_str = heartbeat.read_text(encoding="utf-8").strip()
-                    last = datetime.fromisoformat(last_str.replace("Z", "+00:00"))
+                    # Handle both timezone-aware and naive datetime strings
+                    if last_str.endswith("Z"):
+                        last = datetime.fromisoformat(last_str.replace("Z", "+00:00"))
+                    elif "+" in last_str or last_str.count("-") > 2:
+                        last = datetime.fromisoformat(last_str)
+                    else:
+                        # Naive datetime - assume UTC
+                        last = datetime.fromisoformat(last_str).replace(tzinfo=timezone.utc)
+
+                    # Ensure both are timezone-aware
+                    if last.tzinfo is None:
+                        last = last.replace(tzinfo=timezone.utc)
+
                     delta = (now - last).total_seconds()
                     if delta < self.HEARTBEAT_TIMEOUT_SECONDS:
                         active.append(agent)
@@ -795,7 +807,7 @@ def get_worktree_for_task(task: str) -> str:
     elif any(kw in task_lower for kw in testing_keywords):
         return "cursor-testing"
 
-    return "cursor-backend  # default"
+    return "cursor-backend"  # default
 
 
 # =============================================================================
