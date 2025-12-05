@@ -24,7 +24,6 @@ try:
     from nodes.gas_tracker.node import GasTrackerInput, GasTrackerNode
     from nodes.google_genai.node import GoogleGenAIInput, GoogleGenAINode
     from nodes.gradio_eval.node import GradioEvalInput, GradioEvalNode
-    from nodes.nft_mint.node import NFTMintInput, NFTMintNode
     from nodes.rag.node import RAGInput, RAGNode
     from nodes.real_esrgan.node import RealESRGANInput, RealESRGANNode
     from nodes.sales_strategy.node import SalesStrategyInput, SalesStrategyNode
@@ -53,11 +52,11 @@ class AgentState(TypedDict):
     approved: bool
     feedback: str
 
-    # Strategy & NFT
+    # Strategy & Publishing
     sales_strategy: Dict[str, Any]
     gas_price: float
-    mint_tx: str
-    ipfs_url: str
+    publish_tx: str
+    publish_url: str
     status: str
 
     # RAG context
@@ -253,31 +252,43 @@ def review_node(state: AgentState) -> Dict[str, Any]:
         return {"approved": True, "feedback": "Auto-approved (review unavailable)"}
 
 
-def mint_node(state: AgentState) -> Dict[str, Any]:
-    """Mint NFT to blockchain."""
-    print("--- Minting NFT ---")
+def publish_asset_node(state: AgentState) -> Dict[str, Any]:
+    """Publish generated asset to configured platform."""
+    print("--- Publishing Asset ---")
 
     try:
-        node = NFTMintNode(name="nft_mint")
+        # Import generic asset publisher
+        sys.path.insert(0, os.path.join(workspace_root, "packages/core/src"))
+        from codeops.core.integrations.asset_publisher import get_publisher
+
+        # Get publisher (defaults to local, can be configured)
+        platform = state.get("target_platform", "local")
+        publisher = get_publisher(platform)
+
         img = state["generated_images"][0]
         strategy = state["sales_strategy"]
 
-        output = node.execute(NFTMintInput(
-            image_path=img,
-            name="AI Generated Art",
-            description=strategy.get("rationale", "AI Art"),
-            price_eth=strategy.get("price", 0.01)
-        ))
+        # Publish asset with metadata
+        result = publisher.publish(
+            asset_path=img,
+            metadata={
+                "name": "AI Generated Art",
+                "description": strategy.get("rationale", "AI Art"),
+                "style_keywords": strategy.get("style_keywords", []),
+                "price": strategy.get("price", 0.0),
+                "created_at": str(state.get("timestamp", ""))
+            }
+        )
 
         return {
-            "mint_tx": output.tx_hash,
-            "ipfs_url": output.ipfs_url,
-            "status": output.status
+            "publish_tx": result.transaction_id,
+            "publish_url": result.url,
+            "status": result.status
         }
 
     except Exception as e:
-        print(f"Minting failed: {e}")
-        return {"mint_tx": "", "ipfs_url": "", "status": f"error: {e}"}
+        print(f"Publishing failed: {e}")
+        return {"publish_tx": "", "publish_url": "", "status": f"error: {e}"}
 
 
 # =============================================================================
@@ -299,7 +310,7 @@ def check_clip_score(state: AgentState) -> str:
 def check_approval(state: AgentState) -> str:
     """Route based on human approval."""
     if state.get("approved"):
-        return "mint"
+        return "publish_asset"
     return END
 
 
@@ -330,7 +341,7 @@ def create_workflow() -> StateGraph:
     workflow.add_node("upscale", upscale_node)
     workflow.add_node("clip_eval", clip_eval_node)
     workflow.add_node("review", review_node)
-    workflow.add_node("mint", mint_node)
+    workflow.add_node("publish_asset", publish_asset_node)
 
     # Set entry point
     workflow.set_entry_point("social_research")
@@ -345,9 +356,9 @@ def create_workflow() -> StateGraph:
     workflow.add_edge("upscale", "clip_eval")
     workflow.add_edge("clip_eval", "review")
 
-    # Conditional: Review -> Mint or End
+    # Conditional: Review -> Publish Asset or End
     workflow.add_conditional_edges("review", check_approval)
-    workflow.add_edge("mint", END)
+    workflow.add_edge("publish_asset", END)
 
     return workflow
 

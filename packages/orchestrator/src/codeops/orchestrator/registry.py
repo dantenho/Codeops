@@ -137,14 +137,14 @@ NODE_REGISTRY: Dict[str, NodeConfig] = {
         requires_api_key=True
     ),
 
-    "nft_mint": NodeConfig(
-        name="nft_mint",
-        module_path="nodes.nft_mint.node",
-        input_class="NFTMintInput",
-        output_class="NFTMintOutput",
-        node_class="NFTMintNode",
-        description="NFT minting to blockchain",
-        requires_api_key=True
+    "asset_publisher": NodeConfig(
+        name="asset_publisher",
+        module_path="codeops.core.integrations.asset_publisher",
+        input_class="AssetPublisher",
+        output_class="PublishResult",
+        node_class="LocalAssetPublisher",
+        description="Generic asset publishing (local, IPFS, S3, Cloudinary)",
+        requires_api_key=False
     ),
 
     # UI Nodes
@@ -260,12 +260,11 @@ WORKFLOW_TEMPLATES = {
         "google_genai"
     ],
 
-    "nft_pipeline": [
+    "content_publishing_pipeline": [
         "social_media",
         "comfyui",
         "clip_eval",
-        "gas_tracker",
-        "nft_mint"
+        "asset_publisher"
     ],
 
     "upscale_batch": [
