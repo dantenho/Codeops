@@ -250,6 +250,17 @@ Examples:
 
 ## 🐙 GITHUB INTEGRATION & MERGE PROTOCOL
 
+### ⚠️ CRITICAL: All Branches Are Local
+
+**All branches MUST be local-only by default.**
+
+- ❌ **FORBIDDEN:** Automatic upstream tracking (`git push -u origin branch`)
+- ✅ **REQUIRED:** Create branches locally without remote tracking
+- ✅ **ALLOWED:** Push branches only when explicitly needed for PRs
+- ✅ **REQUIRED:** Unset upstream tracking if accidentally set: `git branch --unset-upstream`
+
+**Rationale:** Prevents "couldn't find remote ref" errors and keeps branches local until ready for collaboration.
+
 ### Branch Naming Convention
 
 All agents **MUST** use the following branch naming structure:

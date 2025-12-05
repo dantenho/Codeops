@@ -1,0 +1,23 @@
+# [CREATE] Local Git Configuration for Agents.MD Protocol
+# Purpose: Configure Git to keep all branches local by default
+# Agent: Composer
+# Timestamp: 2025-12-05T01:45:00Z
+#
+# INSTRUCTIONS:
+# Copy these settings to your global Git config:
+# git config --global --add push.default simple
+# git config --global --add push.autoSetupRemote false
+# git config --global --add branch.autoSetupMerge false
+
+[push]
+    # Don't automatically set up remote tracking
+    default = simple
+    autoSetupRemote = false
+
+[branch]
+    # Don't automatically set up merge tracking
+    autoSetupMerge = false
+
+[init]
+    # Use 'main' as default branch name
+    defaultBranch = main
