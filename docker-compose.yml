@@ -1,0 +1,96 @@
+version: '3.8'
+
+services:
+  # Main orchestrator service
+  orchestrator:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: content-farm-orchestrator
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+      - GOOGLE_API_KEY=${GOOGLE_API_KEY}
+      - OPENSEA_API_KEY=${OPENSEA_API_KEY}
+      - ETHERSCAN_API_KEY=${ETHERSCAN_API_KEY}
+      - PINATA_API_KEY=${PINATA_API_KEY}
+      - CHROMA_DB_PATH=/app/data/chromadb
+    volumes:
+      - ./output:/app/output
+      - ./models:/app/models
+      - ./data:/app/data
+      - ./.env:/app/.env:ro
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    depends_on:
+      - chromadb
+    networks:
+      - content-farm-net
+    restart: unless-stopped
+
+  # ChromaDB vector store
+  chromadb:
+    image: chromadb/chroma:latest
+    container_name: content-farm-chromadb
+    ports:
+      - "8000:8000"
+    volumes:
+      - chromadb_data:/chroma/chroma
+    environment:
+      - ANONYMIZED_TELEMETRY=False
+    networks:
+      - content-farm-net
+    restart: unless-stopped
+
+  # ComfyUI for image generation
+  comfyui:
+    image: pytorch/pytorch:2.1.0-cuda12.1-cudnn8-runtime
+    container_name: content-farm-comfyui
+    command: >
+      bash -c "pip install -r /workspace/requirements.txt &&
+               python /workspace/main.py --listen 0.0.0.0"
+    ports:
+      - "8188:8188"
+    volumes:
+      - ./tools/ComfyUI:/workspace
+      - ./models:/workspace/models
+      - ./output/comfyui:/workspace/output
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    networks:
+      - content-farm-net
+    restart: unless-stopped
+
+  # Gradio dashboard (optional)
+  dashboard:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: content-farm-dashboard
+    command: python -m packages.dashboard.main
+    ports:
+      - "7860:7860"
+    environment:
+      - GRADIO_SERVER_NAME=0.0.0.0
+    volumes:
+      - ./output:/app/output:ro
+    networks:
+      - content-farm-net
+    profiles:
+      - dashboard
+
+networks:
+  content-farm-net:
+    driver: bridge
+
+volumes:
+  chromadb_data:
