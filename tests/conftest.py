@@ -1,52 +1,132 @@
-"""
-pytest configuration and fixtures.
-"""
+"""Test configuration and fixtures"""
 
-import os
-import sys
-from unittest.mock import MagicMock
-
+import asyncio
+import json
 import pytest
+from pathlib import Path
+from typing import AsyncGenerator, Dict, Any
+from unittest.mock import MagicMock, AsyncMock
 
-# Add paths for imports
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../packages/core/src')))
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../')))
+import chromadb
+from neo4j import GraphDatabase
 
 
-@pytest.fixture
-def mock_vector_store():
-    """Fixture providing a mocked vector store."""
-    store = MagicMock()
-    store.search.return_value = {
-        "documents": [["doc1", "doc2"]],
-        "metadatas": [[{"id": 1}, {"id": 2}]]
-    }
-    store.add_documents.return_value = None
-    return store
+@pytest.fixture(scope="session")
+def event_loop():
+    """Create event loop for async tests"""
+    loop = asyncio.get_event_loop_policy().new_event_loop()
+    yield loop
+    loop.close()
 
 
 @pytest.fixture
-def temp_image(tmp_path):
-    """Fixture providing a temporary image file."""
-    img_path = tmp_path / "test_image.png"
-    # Create a minimal valid PNG
-    img_path.write_bytes(b'\x89PNG\r\n\x1a\n' + b'\x00' * 100)
-    return str(img_path)
+async def chromadb_client() -> AsyncGenerator:
+    """Create ChromaDB test client"""
+    client = chromadb.Client()
+    yield client
+    # Cleanup
+    try:
+        client.delete_collection("test_collection")
+    except:
+        pass
 
 
 @pytest.fixture
-def mock_api_responses():
-    """Fixture providing mock API responses."""
+async def neo4j_driver():
+    """Create Neo4j test driver"""
+    driver = GraphDatabase.driver(
+        "bolt://localhost:7687",
+        auth=("neo4j", "password"),
+        encrypted=False
+    )
+    yield driver
+    driver.close()
+
+
+@pytest.fixture
+def mock_firecrawl_response() -> Dict[str, Any]:
+    """Mock FireCrawl response"""
+    return [
+        {
+            "keyword": "anime nft trending",
+            "volume": 1500,
+            "sentiment": 0.8,
+            "source": "twitter",
+            "url": "https://twitter.com/search"
+        },
+        {
+            "keyword": "rare anime collectibles",
+            "volume": 800,
+            "sentiment": 0.75,
+            "source": "reddit",
+            "url": "https://reddit.com/r/NFT"
+        }
+    ]
+
+
+@pytest.fixture
+def mock_generated_asset() -> Dict[str, Any]:
+    """Mock generated asset"""
     return {
-        "opensea": {"collection": "test", "floor_price": 0.1},
-        "etherscan": {"result": {"SafeGasPrice": "30"}},
-        "gemini": {"text": "Generated content"}
+        "id": "asset-test-001",
+        "title": "Generated Anime NFT #001",
+        "path": "/app/ComfyUI/output/asset_test_001.png",
+        "model": "anything-v4.5",
+        "style": "anime",
+        "description": "High-quality anime character",
+        "quality_score": 8.5,
+        "embedding": [0.1] * 768,
+        "model_id": "model-123"
     }
 
 
-@pytest.fixture(autouse=True)
-def clean_env(monkeypatch):
-    """Clean environment for each test."""
-    # Remove sensitive keys to test fallback behavior
-    monkeypatch.delenv("GOOGLE_API_KEY", raising=False)
-    monkeypatch.delenv("OPENSEA_API_KEY", raising=False)
+@pytest.fixture
+def mock_config() -> Dict[str, Any]:
+    """Mock configuration"""
+    return {
+        "espalha_pipeline": {
+            "firecrawl": {
+                "enabled": True,
+                "api_endpoint": "http://localhost:3000",
+                "timeout": 30000
+            },
+            "comfyui": {
+                "enabled": True,
+                "api_endpoint": "http://localhost:8188",
+                "mcp_enabled": True
+            },
+            "chromadb": {
+                "enabled": True,
+                "persist_directory": "./chroma_db"
+            },
+            "neo4j": {
+                "enabled": True,
+                "uri": "bolt://localhost:7687",
+                "auth": ["neo4j", "password"]
+            },
+            "memory": {
+                "enabled": True,
+                "storage_dir": "./memory"
+            }
+        }
+    }
+
+
+@pytest.fixture
+def temp_memory_dir(tmp_path) -> Path:
+    """Create temporary memory directory"""
+    memory_dir = tmp_path / "memory"
+    memory_dir.mkdir()
+    return memory_dir
+
+
+@pytest.fixture
+def sample_memory_context() -> Dict[str, Any]:
+    """Sample memory context"""
+    return {
+        "timestamp": "2025-12-05T10:30:00Z",
+        "assets_generated": 5,
+        "trends_processed": 10,
+        "models_used": ["anything-v4.5"],
+        "execution_time": 120.5
+    }

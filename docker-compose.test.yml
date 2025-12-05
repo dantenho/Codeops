@@ -1,0 +1,98 @@
+version: '3.8'
+
+services:
+  # Test environment
+  tests:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      - PYTHONUNBUFFERED=1
+      - NEO4J_URI=bolt://neo4j:7687
+      - NEO4J_AUTH=neo4j:password
+      - CHROMADB_PATH=/app/chroma_db
+      - FIRECRAWL_ENDPOINT=http://firecrawl:3000
+      - COMFYUI_ENDPOINT=http://comfyui:8188
+    depends_on:
+      neo4j:
+        condition: service_healthy
+      chromadb:
+        condition: service_healthy
+    volumes:
+      - .:/app
+      - ./chroma_db:/app/chroma_db
+      - ./memory:/app/memory
+    command: pytest -v --cov=packages/core/src/codeops tests/
+    networks:
+      - espalha
+
+  # Neo4j Database
+  neo4j:
+    image: neo4j:latest
+    environment:
+      - NEO4J_AUTH=neo4j/password
+      - NEO4J_apoc_export_allow__all__writes=true
+      - NEO4J_apoc_import_file_enabled=true
+    ports:
+      - "7474:7474"
+      - "7687:7687"
+    volumes:
+      - neo4j_data:/data
+      - neo4j_logs:/logs
+    healthcheck:
+      test: ["CMD", "cypher-shell", "-u", "neo4j", "-p", "password", "RETURN 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - espalha
+
+  # ChromaDB
+  chromadb:
+    image: ghcr.io/chroma-core/chroma:latest
+    environment:
+      - CHROMA_DB_IMPL=duckdb+parquet
+      - CHROMA_PERSISTENCE_DIRECTORY=/data
+    ports:
+      - "8000:8000"
+    volumes:
+      - chromadb_data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/heartbeat"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - espalha
+
+  # FireCrawl (optional, for integration tests)
+  firecrawl:
+    image: mendableai/firecrawl:latest
+    environment:
+      - API_KEY=test-key
+    ports:
+      - "3000:3000"
+    networks:
+      - espalha
+
+  # ComfyUI (optional, for full integration tests)
+  comfyui:
+    image: comfy-ui:latest
+    environment:
+      - CUDA_VISIBLE_DEVICES=
+    ports:
+      - "8188:8188"
+    volumes:
+      - ./ComfyUI/models:/app/models
+      - ./ComfyUI/output:/app/output
+    networks:
+      - espalha
+
+volumes:
+  neo4j_data:
+  neo4j_logs:
+  chromadb_data:
+
+networks:
+  espalha:
+    driver: bridge
