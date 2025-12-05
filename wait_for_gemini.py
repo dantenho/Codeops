@@ -39,6 +39,25 @@ def wait_for_gemini_response(check_interval: int = 5, max_wait: int = 300):
         check_count += 1
         messages = tunnel.receive(mark_read=False)
 
+        # Also check gemini_outbox.jsonl directly (in case messages are there)
+        from pathlib import Path
+        import json
+        gemini_outbox = Path(".tunnel/gemini_outbox.jsonl")
+        if gemini_outbox.exists() and gemini_outbox.stat().st_size > 0:
+            try:
+                with open(gemini_outbox, "r", encoding="utf-8") as f:
+                    for line in f:
+                        if line.strip():
+                            try:
+                                data = json.loads(line)
+                                if data.get("recipient", "").lower() == "antigravity":
+                                    from tunnel import TunnelMessage
+                                    messages.append(TunnelMessage(**data))
+                            except (json.JSONDecodeError, TypeError):
+                                pass
+            except Exception as e:
+                print(f"Warning: Could not read gemini_outbox: {e}")
+
         # Filter messages from Gemini
         gemini_messages = [msg for msg in messages if msg.sender.lower() == "gemini"]
 
