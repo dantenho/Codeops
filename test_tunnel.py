@@ -3,13 +3,7 @@ import sys
 from pathlib import Path
 
 # Add project root to path
-sys.path.insert(0, str(Path(__file__).parents[3]))
-
-import sys
-from pathlib import Path
-
-# Add project root to path
-sys.path.insert(0, str(Path(__file__).parents[3]))
+sys.path.insert(0, str(Path(__file__).parent))
 
 from bin.channel.integration import create_default_channels, setup_tunnel_with_claude
 from bin.channel.models import SeverityLevel, Suggestion, SuggestionType
