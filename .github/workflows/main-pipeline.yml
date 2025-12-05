@@ -6,17 +6,46 @@ on:
       - main
       - workspace/*
       - shared/*
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+      - '.github/ISSUE_TEMPLATE/**'
+      - '.gitignore'
+      - 'LICENSE'
+
   pull_request:
     branches:
       - main
       - workspace/*
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+
   schedule:
     - cron: '0 2 * * *'  # Daily 2 AM
+
   workflow_dispatch:
+    inputs:
+      skip_tests:
+        description: 'Skip tests'
+        type: boolean
+        default: false
+      deploy_environment:
+        description: 'Deployment environment'
+        type: choice
+        options:
+          - staging
+          - production
+          - both
+        default: 'staging'
 
 env:
   REGISTRY: docker.io
   IMAGE_NAME: ${{ github.repository }}
+
+concurrency:
+  group: main-pipeline-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   # Stage 1: Code Quality
