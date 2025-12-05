@@ -1,0 +1,9 @@
+Metadata-Version: 2.4
+Name: codeops-orchestrator
+Version: 0.1.0
+Summary: LangGraph Orchestrator for CodeOps
+Requires-Dist: codeops-core
+Requires-Dist: langgraph
+Requires-Dist: langchain
+Requires-Dist: pydantic
+Requires-Dist: python-dotenv

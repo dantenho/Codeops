@@ -21,6 +21,14 @@ except ImportError as e:
     import logging
     logging.warning(f"Suggestion Tunnel router not available: {e}")
 
+# Include Webhooks router
+try:
+    from codeops.api import webhooks
+    app.include_router(webhooks.router, prefix="/webhooks", tags=["webhooks"])
+except ImportError as e:
+    import logging
+    logging.warning(f"Webhooks router not available: {e}")
+
 @app.get("/health")
 async def health_check():
     """Health check endpoint."""
