@@ -1,14 +1,20 @@
 """Test configuration and fixtures"""
 
 import asyncio
-import json
-import pytest
 from pathlib import Path
-from typing import AsyncGenerator, Dict, Any
-from unittest.mock import MagicMock, AsyncMock
+from typing import Any, AsyncGenerator, Dict
 
-import chromadb
-from neo4j import GraphDatabase
+import pytest
+
+try:
+    import chromadb
+except ImportError:
+    chromadb = None
+
+try:
+    from neo4j import GraphDatabase
+except ImportError:
+    GraphDatabase = None
 
 
 @pytest.fixture(scope="session")
