@@ -109,6 +109,38 @@ COLLECTIONS = {
             "severity": "str",  # "low", "medium", "high", "critical"
             "auto_resolved": "bool"  # Whether it was auto-resolved
         }
+    },
+
+    "agent_instructions": {
+        "description": "State-of-the-art code agent conversation instructions and prompt templates",
+        "embedding_function": "sentence-transformers/all-MiniLM-L6-v2",
+        "metadata_schema": {
+            "instruction_id": "str",  # Unique identifier
+            "agent_type": "str",  # Type of agent (e.g., "spec-requirements", "spec-design")
+            "instruction_category": "str",  # "system_prompt", "conversation_pattern", "error_handling", "tool_usage", "response_formatting"
+            "version": "str",  # Version of the instruction template
+            "author": "str",  # Author or source
+            "tags": "List[str]",  # Tags for categorization
+            "usage_examples": "str",  # Usage examples or notes
+            "created_at": "str"  # ISO timestamp
+        }
+    },
+
+    "agent_documents": {
+        "description": "Agent specification files and documentation with hierarchical metadata",
+        "embedding_function": "sentence-transformers/all-MiniLM-L6-v2",
+        "metadata_schema": {
+            "agent_name": "str",  # Agent name (e.g., "kfc")
+            "file_type": "str",  # File type (e.g., "requirements", "design", "impl")
+            "spec_type": "str",  # Spec type from .claude path (e.g., "spec-requirements")
+            "hierarchy_path": "str",  # Full file path (e.g., "agents/kfc/requirements.md")
+            "category": "str",  # Category (e.g., "agent_instruction")
+            "version": "str",  # Version
+            "tags": "List[str]",  # Tags for search
+            "chunk_index": "int",  # Chunk index for large files
+            "total_chunks": "int",  # Total chunks for the file
+            "created_at": "str"  # ISO timestamp
+        }
     }
 }
 

@@ -13,6 +13,30 @@ app = FastAPI(
 
 app.include_router(agents.router)
 
+# Include Nodes router
+try:
+    from codeops.api.routers import nodes
+    app.include_router(nodes.router)
+except ImportError as e:
+    import logging
+    logging.warning(f"Nodes router not available: {e}")
+
+# Include Workflows router
+try:
+    from codeops.api.routers import workflows
+    app.include_router(workflows.router)
+except ImportError as e:
+    import logging
+    logging.warning(f"Workflows router not available: {e}")
+
+# Include Execute router
+try:
+    from codeops.api.routers import execute
+    app.include_router(execute.router)
+except ImportError as e:
+    import logging
+    logging.warning(f"Execute router not available: {e}")
+
 # Include Suggestion Tunnel router
 try:
     from codeops.api.routers import tunnel

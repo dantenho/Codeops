@@ -4,6 +4,8 @@ from typing import Any, Dict, Optional
 from fastapi import APIRouter, BackgroundTasks, HTTPException
 from pydantic import BaseModel
 
+from codeops.core.logging import get_logger
+
 # Import orchestrator
 # Assuming packages are installed or in path
 try:
@@ -11,6 +13,7 @@ try:
 except ImportError:
     graph_app = None
 
+logger = get_logger(__name__)
 router = APIRouter()
 
 class TriggerRequest(BaseModel):
@@ -46,10 +49,14 @@ async def trigger_content_farm(request: TriggerRequest, background_tasks: Backgr
     return {"status": "accepted", "run_id": run_id}
 
 async def run_workflow(state: Dict[str, Any], run_id: str, callback_url: Optional[str]):
-    print(f"Starting workflow run {run_id}")
+    logger.info("Starting workflow run", run_id=run_id)
     try:
         result = await graph_app.ainvoke(state)
-        print(f"Workflow {run_id} completed: {result.get('status')}")
+        logger.info(
+            "Workflow completed",
+            run_id=run_id,
+            status=result.get('status')
+        )
 
         if callback_url:
             # Notify callback
@@ -57,4 +64,9 @@ async def run_workflow(state: Dict[str, Any], run_id: str, callback_url: Optiona
             requests.post(callback_url, json={"run_id": run_id, "result": result})
 
     except Exception as e:
-        print(f"Workflow {run_id} failed: {e}")
+        logger.error(
+            "Workflow failed",
+            run_id=run_id,
+            error=str(e),
+            exc_info=True
+        )
