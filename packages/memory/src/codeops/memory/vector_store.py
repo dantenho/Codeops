@@ -30,15 +30,48 @@ class VectorStoreBase(ABC):
 
 
 class ChromaVectorStore(VectorStoreBase):
-    """ChromaDB implementation of VectorStore."""
+    """ChromaDB implementation of VectorStore with GPU support."""
 
-    def __init__(self):
+    def __init__(self, collection_name: str = "codebase", embedding_model: str = "all-MiniLM-L6-v2"):
         try:
             self.client = chromadb.PersistentClient(
                 path=settings.CHROMA_DB_PATH,
                 settings=Settings(allow_reset=True)
             )
-            self.collection = self.client.get_or_create_collection("codebase")
+
+            # Initialize GPU-accelerated embedding function if available
+            self.embedding_func = None
+            try:
+                import torch
+                from chromadb.utils import embedding_functions
+
+                device = "cuda" if torch.cuda.is_available() else "cpu"
+                print(f"ChromaDB using device: {device}")
+
+                # We use the default SentenceTransformer embedding function but ensure it runs on the right device
+                # Note: Chroma's default wrapper might not expose device easily, so we might need a custom wrapper
+                # For now, we rely on the default which is usually CPU-bound, or we can use a custom one.
+                # Let's use a custom wrapper to ensure CUDA usage.
+
+                class CudaEmbeddingFunction(embedding_functions.EmbeddingFunction):
+                    def __init__(self, model_name):
+                        from sentence_transformers import SentenceTransformer
+                        self.model = SentenceTransformer(model_name, device=device)
+
+                    def __call__(self, input: List[str]) -> List[List[float]]:
+                        embeddings = self.model.encode(input, convert_to_numpy=True)
+                        return embeddings.tolist()
+
+                self.embedding_func = CudaEmbeddingFunction(embedding_model)
+
+            except ImportError:
+                print("Warning: Could not initialize CUDA embeddings. Using default.")
+                self.embedding_func = None
+
+            self.collection = self.client.get_or_create_collection(
+                name=collection_name,
+                embedding_function=self.embedding_func
+            )
         except Exception as e:
             raise RAGError(f"Failed to initialize ChromaDB: {str(e)}")
 
