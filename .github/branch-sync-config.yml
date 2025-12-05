@@ -1,0 +1,50 @@
+# Configuration for branch sync workflow
+
+# Branches to sync (supports glob patterns)
+sync_branches:
+  include:
+    - "agent/*"
+    - "feature/*"
+    - "develop"
+  exclude:
+    - "agent/archived-*"
+    - "agent/experimental-*"
+
+# Source branch configuration
+source:
+  branch: main
+  require_status_checks: true
+
+# Sync strategies per branch pattern
+strategies:
+  "agent/*": merge
+  "feature/*": rebase
+  "develop": merge
+
+# Conflict handling
+conflicts:
+  create_pr: true
+  auto_assign:
+    - "@org/maintainers"
+  labels:
+    - "sync-conflict"
+    - "needs-review"
+
+# Stale branch settings
+stale:
+  days_threshold: 30
+  action: notify  # notify | archive | delete
+  exclude_branches:
+    - "agent/long-running-*"
+
+# Notifications
+notifications:
+  slack:
+    enabled: true
+    channel: "#dev-ops"
+    on_success: false
+    on_failure: true
+    on_conflict: true
+  email:
+    enabled: true
+    on_failure: true

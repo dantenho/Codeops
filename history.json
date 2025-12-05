@@ -1,0 +1,52 @@
+[
+    {
+        "branch": "agent/researcher",
+        "status": "✅ synced",
+        "behind": "2",
+        "ahead": "0",
+        "strategy": "merge",
+        "duration": "4500",
+        "timestamp": "2023-10-27T10:00:00Z",
+        "run_id": "1001"
+    },
+    {
+        "branch": "agent/writer",
+        "status": "✅ synced",
+        "behind": "1",
+        "ahead": "0",
+        "strategy": "merge",
+        "duration": "3200",
+        "timestamp": "2023-10-27T10:00:00Z",
+        "run_id": "1001"
+    },
+    {
+        "branch": "agent/researcher",
+        "status": "✅ synced",
+        "behind": "0",
+        "ahead": "0",
+        "strategy": "merge",
+        "duration": "1200",
+        "timestamp": "2023-10-27T16:00:00Z",
+        "run_id": "1002"
+    },
+    {
+        "branch": "agent/writer",
+        "status": "⚠️ conflict",
+        "behind": "5",
+        "ahead": "2",
+        "strategy": "merge",
+        "duration": "5000",
+        "timestamp": "2023-10-27T16:00:00Z",
+        "run_id": "1002"
+    },
+    {
+        "branch": "agent/researcher",
+        "status": "✅ synced",
+        "behind": "3",
+        "ahead": "0",
+        "strategy": "merge",
+        "duration": "4100",
+        "timestamp": "2023-10-28T10:00:00Z",
+        "run_id": "1003"
+    }
+]

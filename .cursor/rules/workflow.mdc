@@ -1,0 +1,25 @@
+---
+description: Development Workflow Rules
+globs: *
+---
+
+# Development Workflow Rules
+
+## 1. Local Branching Strategy
+- **Never Push Directly**: Do not push to the remote repository without explicit user approval.
+- **Feature Branches**: Create local branches for each feature/task.
+  - Format: `feat/feature-name` or `fix/bug-name`.
+- **Worktrees**: Use Git Worktrees for parallel development if needed.
+
+## 2. Auto-Coding Protocol
+- **Plan First**: Before writing code, outline the plan in `implementation_plan.md` or a scratchpad.
+- **Atomic Changes**: Make small, verifiable changes.
+- **Review**: Ask the user to review critical changes before committing.
+
+## 3. Commit Messages
+- **Format**: `type(scope): description`
+- **Types**: `feat`, `fix`, `docs`, `style`, `refactor`, `test`, `chore`.
+- **Example**: `feat(frontend): add streamlit sidebar navigation`
+
+## 4. Documentation
+- **Update Docs**: Update `README.md` or `docs/` when changing architecture or adding features.

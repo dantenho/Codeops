@@ -1,0 +1,14 @@
+[project]
+name = "codeops-worker"
+version = "0.1.0"
+description = "Agent Runtime Worker (CrewAI + Celery)"
+dependencies = [
+    "codeops-core",
+    "crewai>=0.1.0",
+    "celery>=5.3.0",
+    "redis>=5.0.0",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"

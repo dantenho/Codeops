@@ -1,0 +1,18 @@
+[project]
+name = "codeops-monorepo"
+version = "0.1.0"
+description = "CodeOps Multi-Agent Platform Monorepo"
+requires-python = ">=3.11"
+dependencies = [
+    "streamlit>=1.30.0",
+    "crewai>=0.1.0",
+    "pydantic>=2.0.0",
+    "python-dotenv>=1.0.0",
+]
+
+[tool.uv.workspace]
+members = ["packages/*"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"

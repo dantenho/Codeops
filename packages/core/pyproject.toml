@@ -1,0 +1,9 @@
+[project]
+name = "codeops-core"
+version = "0.1.0"
+description = "Core utilities for CodeOps: Config, Logging, DAL"
+dependencies = ["pydantic>=2.0.0", "python-dotenv>=1.0.0", "structlog>=24.1.0"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"

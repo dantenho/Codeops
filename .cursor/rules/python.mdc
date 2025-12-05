@@ -1,0 +1,39 @@
+---
+description: Python Development Rules (The Scheme)
+globs: *.py
+---
+
+# Python Development Rules (The Scheme)
+
+## 1. Architecture (Clean Architecture)
+- **Entities**: Pure Python objects, no dependencies.
+- **Use Cases**: Business logic, depends only on Entities.
+- **Adapters**: Interface with external world (API, DB, UI).
+- **Frameworks**: External tools (Django, Streamlit, CrewAI).
+
+## 2. Type Annotations
+- **Strict Typing**: All function arguments and return values MUST be typed.
+- **Tools**: Use `typing` module and `Pydantic` models.
+- **No `Any`**: Avoid `Any` unless absolutely necessary.
+
+## 3. Error Handling
+- **Custom Exceptions**: Define domain-specific exceptions in `core/exceptions.py`.
+- **Try-Except-Else**: Use `else` block for code that runs only if no exception occurs.
+- **No Bare Except**: Never use `except:` without an exception type.
+- **Centralized Handling**: Use decorators or middleware to handle errors globally where possible.
+
+## 4. Code Style
+- **Docstrings**: Google style docstrings for all public functions/classes.
+- **Naming**: `snake_case` for functions/variables, `PascalCase` for classes.
+- **Imports**: Sort imports (Standard lib -> Third party -> Local).
+
+## 5. Streamlit Best Practices
+- **State Management**: Use `st.session_state` for all persistent data. Initialize in `app.py` or top of pages.
+- **Caching**: Use `@st.cache_data` for data fetching and `@st.cache_resource` for ML models/DB connections.
+- **Layout**: Use `st.columns` and `st.expander` to organize content. Avoid clutter.
+- **Widgets**: Use unique keys for widgets if generated in loops.
+
+## 6. CrewAI Best Practices
+- **Configuration**: Keep agents and tasks in `config/*.yaml`.
+- **Tools**: Create custom tools in `tools/` inheriting from `BaseTool`.
+- **Pydantic**: Use Pydantic models for structured output.

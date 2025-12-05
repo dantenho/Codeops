@@ -1,0 +1,494 @@
+# Branch Synchronization Workflow
+# Keeps agent branches synchronized with main, handles conflicts gracefully
+name: Branch Synchronization
+
+on:
+  push:
+    branches: [main, master]
+    paths-ignore:
+      - "**.md"
+      - "docs/**"
+      - ".github/ISSUE_TEMPLATE/**"
+
+  schedule:
+    - cron: "0 */6 * * *" # Every 6 hours
+    - cron: "0 2 * * 0" # Weekly deep sync
+
+  workflow_dispatch:
+    inputs:
+      sync_strategy:
+        description: "Merge strategy"
+        required: true
+        default: "merge"
+        type: choice
+        options: [merge, rebase, squash]
+      dry_run:
+        description: "Dry run mode"
+        type: boolean
+        default: false
+      specific_branch:
+        description: "Specific branch (empty = all)"
+        type: string
+        default: ""
+      force_sync:
+        description: "Force sync (overwrite conflicts)"
+        type: boolean
+        default: false
+      cleanup_stale:
+        description: "Cleanup stale branches"
+        type: boolean
+        default: false
+      create_conflict_prs:
+        description: "Create PRs for conflicts"
+        type: boolean
+        default: true
+
+env:
+  SOURCE_BRANCH: main
+  STALE_DAYS: 30
+  MAX_RETRIES: 3
+  RETRY_DELAY: 5
+  BRANCH_PATTERN: "^agent/"
+
+concurrency:
+  group: branch-sync-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  discover:
+    name: Discover Branches
+    runs-on: ubuntu-latest
+    outputs:
+      branches: ${{ steps.find.outputs.branches }}
+      count: ${{ steps.find.outputs.count }}
+      has_branches: ${{ steps.find.outputs.has_branches }}
+      source_sha: ${{ steps.source.outputs.sha }}
+      strategy: ${{ steps.config.outputs.strategy }}
+      dry_run: ${{ steps.config.outputs.dry_run }}
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Get source branch info
+        id: source
+        run: |
+          sha=$(git rev-parse origin/${{ env.SOURCE_BRANCH }})
+          echo "sha=$sha" >> $GITHUB_OUTPUT
+
+      - name: Set sync configuration
+        id: config
+        run: |
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            strategy="${{ inputs.sync_strategy }}"
+            dry_run="${{ inputs.dry_run }}"
+          elif [[ "${{ github.event.schedule }}" == "0 2 * * 0" ]]; then
+            strategy="rebase"
+            dry_run="false"
+          else
+            strategy="merge"
+            dry_run="false"
+          fi
+          echo "strategy=$strategy" >> $GITHUB_OUTPUT
+          echo "dry_run=$dry_run" >> $GITHUB_OUTPUT
+
+      - name: Find branches
+        id: find
+        run: |
+          specific="${{ inputs.specific_branch }}"
+
+          if [[ -n "$specific" ]]; then
+            if git ls-remote --exit-code --heads origin "$specific" &>/dev/null; then
+              branches_json="[\"$specific\"]"
+              count=1
+            else
+              echo "::error::Branch '$specific' not found"
+              branches_json="[]"
+              count=0
+            fi
+          else
+            branches=$(git branch -r | grep -E 'origin/agent/' | sed 's|origin/||' | tr -d ' ' | sort)
+            if [[ -n "$branches" ]]; then
+              branches_json=$(echo "$branches" | jq -R -s -c 'split("\n") | map(select(. != ""))')
+              count=$(echo "$branches" | grep -c . || echo 0)
+            else
+              branches_json="[]"
+              count=0
+            fi
+          fi
+
+          echo "branches=$branches_json" >> $GITHUB_OUTPUT
+          echo "count=$count" >> $GITHUB_OUTPUT
+          echo "has_branches=$([[ $count -gt 0 ]] && echo true || echo false)" >> $GITHUB_OUTPUT
+
+  sync:
+    name: Sync ${{ matrix.branch }}
+    needs: discover
+    if: needs.discover.outputs.has_branches == 'true'
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      max-parallel: 5
+      matrix:
+        branch: ${{ fromJSON(needs.discover.outputs.branches) }}
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Configure git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git config pull.rebase false
+
+      - name: Analyze branch
+        id: analyze
+        run: |
+          git checkout "${{ matrix.branch }}"
+
+          behind=$(git rev-list --count HEAD..origin/${{ env.SOURCE_BRANCH }})
+          ahead=$(git rev-list --count origin/${{ env.SOURCE_BRANCH }}..HEAD)
+
+          if [[ "$behind" -eq 0 ]]; then
+            status="up-to-date"
+          else
+            status="needs-sync"
+          fi
+
+          echo "behind=$behind" >> $GITHUB_OUTPUT
+          echo "ahead=$ahead" >> $GITHUB_OUTPUT
+          echo "status=$status" >> $GITHUB_OUTPUT
+
+      - name: Sync branch
+        id: sync
+        if: steps.analyze.outputs.status == 'needs-sync'
+        run: |
+          strategy="${{ needs.discover.outputs.strategy }}"
+          source="${{ env.SOURCE_BRANCH }}"
+
+          sync_branch() {
+            case "$strategy" in
+              merge)
+                git merge "origin/$source" --no-edit \
+                  -m "Merge $source into ${{ matrix.branch }} [auto-sync]"
+                ;;
+              rebase)
+                git rebase "origin/$source"
+                ;;
+              squash)
+                git merge "origin/$source" --squash
+                git commit -m "Squash merge $source into ${{ matrix.branch }} [auto-sync]"
+                ;;
+            esac
+          }
+
+          for i in $(seq 1 ${{ env.MAX_RETRIES }}); do
+            if sync_branch 2>&1; then
+              echo "success=true" >> $GITHUB_OUTPUT
+              exit 0
+            fi
+
+            if git diff --name-only --diff-filter=U | grep -q .; then
+              echo "conflict=true" >> $GITHUB_OUTPUT
+              git merge --abort 2>/dev/null || git rebase --abort 2>/dev/null || true
+              exit 0
+            fi
+
+            sleep ${{ env.RETRY_DELAY }}
+            git reset --hard "origin/${{ matrix.branch }}"
+          done
+
+          echo "success=false" >> $GITHUB_OUTPUT
+
+      - name: Push changes
+        if: |
+          steps.analyze.outputs.status == 'needs-sync' &&
+          steps.sync.outputs.success == 'true' &&
+          needs.discover.outputs.dry_run != 'true'
+        run: |
+          if [[ "${{ needs.discover.outputs.strategy }}" == "rebase" ]]; then
+            git push --force-with-lease origin "${{ matrix.branch }}"
+          else
+            git push origin "${{ matrix.branch }}"
+          fi
+
+      - name: Create conflict PR
+        if: |
+          steps.sync.outputs.conflict == 'true' &&
+          inputs.create_conflict_prs != false
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const branch = '${{ matrix.branch }}';
+            const source = '${{ env.SOURCE_BRANCH }}';
+
+            const { data: existing } = await github.rest.pulls.list({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              head: source,
+              base: branch,
+              state: 'open'
+            });
+
+            if (existing.some(pr => pr.labels.find(l => l.name === 'sync-conflict'))) {
+              console.log('Conflict PR already exists');
+              return;
+            }
+
+            const { data: pr } = await github.rest.pulls.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: `[Sync Conflict] Merge ${source} into ${branch}`,
+              head: source,
+              base: branch,
+              body: [
+                '## Sync Conflict',
+                '',
+                `Automated sync from \`${source}\` to \`${branch}\` failed due to conflicts.`,
+                '',
+                '### Resolution',
+                '```bash',
+                `git checkout ${branch}`,
+                `git merge origin/${source}`,
+                '# resolve conflicts',
+                'git push',
+                '```',
+                '',
+                `Run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}`
+              ].join('\n')
+            });
+
+            await github.rest.issues.addLabels({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: pr.number,
+              labels: ['sync-conflict', 'automated']
+            });
+
+      - name: Record result
+        if: always()
+        run: |
+          mkdir -p results
+
+          if [[ "${{ steps.analyze.outputs.status }}" == "up-to-date" ]]; then
+            status="up-to-date"
+          elif [[ "${{ steps.sync.outputs.success }}" == "true" ]]; then
+            status="synced"
+          elif [[ "${{ steps.sync.outputs.conflict }}" == "true" ]]; then
+            status="conflict"
+          else
+            status="failed"
+          fi
+
+          jq -n \
+            --arg branch "${{ matrix.branch }}" \
+            --arg status "$status" \
+            --arg behind "${{ steps.analyze.outputs.behind }}" \
+            --arg ahead "${{ steps.analyze.outputs.ahead }}" \
+            '{branch: $branch, status: $status, behind: $behind, ahead: $ahead}' \
+            > "results/${{ strategy.job-index }}.json"
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: result-${{ strategy.job-index }}
+          path: results/
+          retention-days: 1
+          if-no-files-found: ignore
+
+  cleanup:
+    name: Cleanup Stale
+    needs: [discover, sync]
+    if: |
+      always() &&
+      (inputs.cleanup_stale == true || github.event.schedule == '0 2 * * 0')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Find stale branches
+        id: stale
+        run: |
+          threshold=$(date -d "${{ env.STALE_DAYS }} days ago" +%s)
+          stale=""
+
+          for branch in $(git branch -r | grep 'origin/agent/' | sed 's|origin/||'); do
+            last_commit=$(git log -1 --format=%ct "origin/$branch" 2>/dev/null || echo 0)
+            if [[ $last_commit -lt $threshold && $last_commit -ne 0 ]]; then
+              days=$(( ($(date +%s) - last_commit) / 86400 ))
+              stale="$stale$branch ($days days)\n"
+            fi
+          done
+
+          if [[ -n "$stale" ]]; then
+            echo "found=true" >> $GITHUB_OUTPUT
+            {
+              echo "list<<EOF"
+              echo -e "$stale"
+              echo "EOF"
+            } >> $GITHUB_OUTPUT
+          else
+            echo "found=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Create/update stale issue
+        if: steps.stale.outputs.found == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const stale = `${{ steps.stale.outputs.list }}`;
+            const title = 'Stale Agent Branches';
+            const labels = ['stale-branches', 'maintenance'];
+
+            const body = [
+              '## Stale Branches',
+              '',
+              'Branches inactive for more than ${{ env.STALE_DAYS }} days:',
+              '',
+              '```',
+              stale.trim(),
+              '```',
+              '',
+              '### Actions',
+              '- [ ] Review pending work',
+              '- [ ] Close associated PRs',
+              '- [ ] Delete unneeded branches',
+              '',
+              `Updated: ${new Date().toISOString()}`
+            ].join('\n');
+
+            const { data: issues } = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              labels: labels.join(','),
+              state: 'open'
+            });
+
+            if (issues.length > 0) {
+              await github.rest.issues.update({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issues[0].number,
+                body
+              });
+            } else {
+              await github.rest.issues.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title,
+                labels,
+                body
+              });
+            }
+
+  report:
+    name: Report
+    needs: [discover, sync]
+    if: always()
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: results
+          pattern: result-*
+          merge-multiple: true
+        continue-on-error: true
+
+      - name: Generate summary
+        run: |
+          echo "## Branch Sync Report" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Setting | Value |" >> $GITHUB_STEP_SUMMARY
+          echo "|---------|-------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Branches | ${{ needs.discover.outputs.count }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Strategy | ${{ needs.discover.outputs.strategy }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Dry Run | ${{ needs.discover.outputs.dry_run }} |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          if [[ -d results ]] && ls results/*.json &>/dev/null; then
+            echo "### Results" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "| Branch | Status | Behind | Ahead |" >> $GITHUB_STEP_SUMMARY
+            echo "|--------|--------|--------|-------|" >> $GITHUB_STEP_SUMMARY
+
+            for f in results/*.json; do
+              branch=$(jq -r '.branch' "$f")
+              status=$(jq -r '.status' "$f")
+              behind=$(jq -r '.behind' "$f")
+              ahead=$(jq -r '.ahead' "$f")
+              echo "| \`$branch\` | $status | $behind | $ahead |" >> $GITHUB_STEP_SUMMARY
+            done
+          fi
+
+      - name: Persist metrics
+        if: always()
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          git fetch origin metrics:metrics || git checkout --orphan metrics
+          git checkout metrics || git checkout -b metrics
+
+          if [[ ! -f history.json ]]; then echo "[]" > history.json; fi
+
+          cat <<EOF > update_history.py
+          import json
+          import glob
+          from datetime import datetime
+
+          try:
+              with open('history.json', 'r') as f:
+                  history = json.load(f)
+          except:
+              history = []
+
+          new_records = []
+          for f in glob.glob('results/*.json'):
+              with open(f, 'r') as rf:
+                  data = json.load(rf)
+                  data['timestamp'] = datetime.utcnow().isoformat()
+                  data['run_id'] = "${{ github.run_id }}"
+                  new_records.append(data)
+
+          history.extend(new_records)
+          history = history[-1000:]
+
+          with open('history.json', 'w') as f:
+              json.dump(history, f, indent=2)
+          EOF
+
+          python update_history.py
+          rm update_history.py
+
+          git add history.json
+          git commit -m "Update metrics history [skip ci]" || echo "No changes"
+          git push origin metrics
+
+      - name: Notify on failure
+        if: failure() && vars.SLACK_WEBHOOK_URL
+        uses: slackapi/slack-github-action@v1
+        with:
+          payload: |
+            {
+              "text": "Branch sync failed: ${{ github.repository }}",
+              "blocks": [
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "*Branch Sync Failed*\nRepo: `${{ github.repository }}`\n<${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Run>"
+                  }
+                }
+              ]
+            }
+        env:
+          SLACK_WEBHOOK_URL: ${{ vars.SLACK_WEBHOOK_URL }}
+          SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
+        continue-on-error: true
